@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+    <head>
+	<meta charset="UTF-8">
+	<title>Integrated keyboard input test</title>
+	<script type="text/javascript" src="qeema.js"></script>
+	<script type="text/javascript" src="driver.js"></script>
+	<style type="text/css">
+h1 {
+    margin:0;
+    padding:8px;
+    background-color:#888;
+    color:#fff;
+}
+div.a {
+    margin:.5em 0 .5em 0;
+}
+#t1 {
+    width:100%;
+    height:500px;
+    font-family:monospace;
+    font-size:medium;
+    background-color:#ccc;
+    box-sizing:border-box;
+}
+#t2 {
+    width:100%;
+    font-family:monospace;
+    font-size:large;
+    box-sizing:border-box;
+}
+	</style>
+    </head>
+    <body>
+	<h1>Integrated keyboard input test</h1>
+	<div class="a">
+	    <input id="t2" placeholder="focus and input any string..."></input>
+	</div>
+	<div class="a">
+	    <textarea id="t1" readonly="readonly"></textarea>
+	</div>
+	<div>
+	    <label><input type="checkbox" id="p1"> PreventDefault()</label>
+	    <label><input type="checkbox" id="p2"> Log keydown/keypress/keyup</label>
+	    <label><input type="checkbox" id="p3"> Log integrated composition events</label>
+	    <label><input type="checkbox" id="p4"> Log internal composition events</label>
+	</div>
+    </body>
+</html>

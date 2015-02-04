@@ -2,7 +2,7 @@
 <html>
     <head>
 	<meta charset="UTF-8">
-	<title>Integrated keyboard input test</title>
+	<title>qeema: Integrated keyboard manager test</title>
 	<script type="text/javascript" src="qeema.js"></script>
 	<script type="text/javascript" src="driver.js"></script>
 	<style type="text/css">
@@ -32,7 +32,7 @@ div.a {
 	</style>
     </head>
     <body>
-	<h1>Integrated keyboard input test</h1>
+	<h1>qeema: Integrated keyboard manager test</h1>
 	<div class="a">
 	    <input id="t2" placeholder="focus and input any string..."></input>
 	</div>
@@ -40,10 +40,20 @@ div.a {
 	    <textarea id="t1" readonly="readonly"></textarea>
 	</div>
 	<div>
-	    <label><input type="checkbox" id="p1"> PreventDefault()</label>
-	    <label><input type="checkbox" id="p2"> Log keydown/keypress/keyup</label>
-	    <label><input type="checkbox" id="p3"> Log integrated composition events</label>
-	    <label><input type="checkbox" id="p4"> Log internal composition events</label>
+	    <div class="a">
+		<label><input type="checkbox" id="p1"> PreventDefault()</label>
+		<label><input type="checkbox" id="p2"> Log basic (keydown/keypress/keyup) events</label>
+	    </div>
+	    <fieldset>
+		<legend>Log integrated events</legend>
+		<label><input type="checkbox" id="p3"> Composition events</label>
+	    </fieldset>
+	    <fieldset>
+		<legend>Log internal events</legend>
+		<label><input type="checkbox" id="p4"> Basic (keydown/keypress/keyup) events</label>
+		<label><input type="checkbox" id="p5"> Composition events</label>
+		<label><input type="checkbox" id="p6"> Input events</label>
+	    </fieldset>
 	</div>
     </body>
 </html>

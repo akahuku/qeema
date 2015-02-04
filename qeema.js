@@ -55,6 +55,7 @@
 		//   31(0x1f): ^_ = Ctrl+Shift_- on us keyboard
 	};
 	var PRESTO_CTRL_MAP = WEBKIT_CTRL_MAP;
+	var GECKO_CTRL_MAP = null;
 
 	var FUNCTION_KEY_ALIASES = {
 		'bs':       'backspace',
@@ -122,6 +123,7 @@
 	var lockCount = 0;
 	var isSweeping = false;
 	var enableLog = false;
+	var enableLogBasic = false;
 	var enableLogComposition = false;
 	var enableLogInput = false;
 
@@ -139,21 +141,6 @@
 		inputEventInvokedCount: 0,
 		keydownStack: [],
 		keyupStack: [],
-		getCompositionStartPos: function (before, current) {
-			var length = current.length - before.length;
-			if (length <= 0) {
-				return -1;
-			}
-			for (var i = 0, goal = (current.length - length) + 1; i < goal; i++) {
-				var tmp = before.substring(0, i)
-					+ current.substring(i, i + length)
-					+ before.substring(i);
-				if (tmp == current) {
-					return i;
-				}
-			}
-			return -1;
-		}
 	};
 	// }}}
 
@@ -189,6 +176,7 @@
 	function getCtrlMap () {
 		if (global.chrome) return WEBKIT_CTRL_MAP;
 		if (global.opera) return PRESTO_CTRL_MAP;
+		if (global.gecko) return GECKO_CTRL_MAP;
 	}
 
 	function getListenersSet () {
@@ -209,23 +197,43 @@
 		e.altKey   && result.push('A');
 	}
 
-	function getDiff (o, n) {
-		if (o.length > n.length) return '';
-
-		o = o.split('');
-		n = n.split('');
-
-		while (o.length && n.length && o[0] == n[0]) {
-			o.shift();
-			n.shift();
+	function getIncreasePosition (before, current) {
+		var length = current.length - before.length;
+		if (length <= 0) {
+			return -1;
 		}
 
-		while (o.length && n.length && o[o.length - 1] == n[n.length - 1]) {
-			o.pop();
-			n.pop();
+		/*
+		 * before:  abcdefg
+		 * current: abcXYZdefg
+		 * length:  10 - 7 = 3
+		 * goal:    10 - 3 + 1 = 8
+		 *
+		 * loop #0: '' + 'abc' + 'abcdefg' -> x
+		 * loop #1: 'a' + 'bcX' + 'bcdefg' -> x
+		 * loop #2: 'ab' + 'cXY' + 'cdefg' -> x
+		 * loop #3: 'abc' + 'XYZ' + 'defg' -> found, return value: 3
+		 * loop #4: 'abcd' + 'YZd' + 'efg' -> x
+		 * loop #5: 'abcde' + 'Zde' + 'fg' -> x
+		 * loop #6: 'abcdef' + 'def' + 'g' -> x
+		 * loop #7: 'abcdefg' + 'efg' + '' -> x
+		 */
+		for (var i = 0, goal = (current.length - length) + 1; i < goal; i++) {
+			var tmp = before.substring(0, i)
+				+ current.substring(i, i + length)
+				+ before.substring(i);
+			if (tmp == current) {
+				return i;
+			}
 		}
+		return -1;
+	}
 
-		return n.join('');
+	function getIncreasedString (before, current) {
+		var pos = getIncreasePosition(before, current);
+		return pos >= 0 ?
+			current.substr(pos, current.length - before.length) :
+			'';
 	}
 
 	function pushInputEvent (e) {
@@ -298,7 +306,7 @@
 			if (e.keyCode == 229 && !e.__delayedTrace) {
 				cop.keydownStack.push(new DelayedTraceItem(e));
 				enableLog && enableLogComposition && logit(
-					'[keydown] *** stacked:', e.keyCode,
+					'[ keydown] *** stacked:', e.keyCode,
 					', length:', cop.keydownStack.length,
 					' ***'
 				);
@@ -314,8 +322,8 @@
 			return;
 		}
 
-		enableLog && logit(
-			'[keydown] keyCode:', e.keyCode,
+		enableLog && enableLogBasic && logit(
+			'[ keydown] keyCode:', e.keyCode,
 			', which:', e.which,
 			', charCode:', e.charCode,
 			', shift:', e.shiftKey,
@@ -356,7 +364,7 @@
 			return;
 		}
 
-		enableLog && logit(
+		enableLog && enableLogBasic && logit(
 			'[keypress] keyCode:', e.keyCode,
 			', which:', e.which,
 			', charCode:', e.charCode,
@@ -439,6 +447,20 @@
 	}
 
 	function keyup (e) {
+		if (e.shiftKey && e.keyCode == 16
+		||  e.ctrlKey && e.keyCode == 17
+		||  e.altKey && e.keyCode == 18) {
+			return;
+		}
+
+		enableLog && enableLogBasic && logit(
+			'[  keyup] keyCode:', e.keyCode,
+			', which:', e.which,
+			', charCode:', e.charCode,
+			', shift:', e.shiftKey,
+			', ctrl:', e.ctrlKey,
+			', alt:', e.altKey
+		);
 	}
 
 	function keyupPresto (e) {
@@ -606,7 +628,7 @@
 						'[  keyup] composition start(2)'
 					);
 
-					cop.compositionStartPos = cop.getCompositionStartPos(lastValue, value);
+					cop.compositionStartPos = getIncreasePosition(lastValue, value);
 					cop.lastCompositionLength = 0;
 				}
 				increment = value.length - lastValue.length;
@@ -644,7 +666,7 @@
 
 		switch (lastReceivedEvent) {
 		case 'keydown':
-			var s = getDiff(lastValue, e.target.value);
+			var s = getIncreasedString(lastValue, e.target.value);
 			if (s != '') {
 				fire('compositionstart', {data:''});
 				fire('compositionupdate', {data:s});
@@ -1118,7 +1140,7 @@
 			break;
 		}
 	})();
-	global.keyManager = Object.create(Object.prototype, {
+	global.qeema = Object.create(Object.prototype, {
 		install: {value:install},
 		uninstall: {value:uninstall},
 		addListener: {value:addListener},
@@ -1160,6 +1182,10 @@
 		log: {
 			get: function () {return enableLog},
 			set: function (v) {enableLog = !!v}
+		},
+		logBasic: {
+			get: function () {return enableLogBasic},
+			set: function (v) {enableLogBasic = !!v}
 		},
 		logComposition: {
 			get: function () {return enableLogComposition},

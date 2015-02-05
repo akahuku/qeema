@@ -273,6 +273,9 @@
 		for (var i = 0, goal = l.length; i < goal; i++) {
 			if (l[i](e) === false) {
 				e.preventDefault();
+				if (consumed) {
+					consumed.defaultPrevented = true;
+				}
 			};
 		}
 	}
@@ -338,6 +341,9 @@
 			if (e.ctrlKey && !e.altKey && ctrlMap && e.keyCode in ctrlMap) {
 				charCode = ctrlMap[e.keyCode];
 				keyCode = 0;
+				enableLog && enableLogBasic && logit(
+					'[ keydown] found ctrl-shortcut'
+				);
 			}
 			else {
 				return;
@@ -350,22 +356,37 @@
 			ctrlKey: e.ctrlKey,
 			altKey: e.altKey,
 			charCode: charCode,
+			which: e.which,
 			keyCode: keyCode,
 			preventDefault: function () {e.preventDefault()}
 		});
 
-		consumed = true;
+		consumed = {
+			defaultPrevented: false
+		};
 	}
 
 	function keypress (e) {
 		lastReceivedEvent = e.type;
 		if (e.type == 'keypress' && consumed) {
-			e.preventDefault();
+			if (consumed.defaultPrevented) {
+				enableLog && enableLogBasic && logit(
+					'[keypress] ignoring consumed keypress and prevented default action.'
+				);
+				e.preventDefault();
+			}
+			else {
+				enableLog && enableLogBasic && logit(
+					'[keypress] ignoring consumed keypress.'
+				);
+			}
+			consumed = false;
 			return;
 		}
 
 		enableLog && enableLogBasic && logit(
-			'[keypress] keyCode:', e.keyCode,
+			(e.type != 'keypress' ? '[keypress (' + e.type + ' delegation)]' : '[keypress]'),
+			' keyCode:', e.keyCode,
 			', which:', e.which,
 			', charCode:', e.charCode,
 			', shift:', e.shiftKey,

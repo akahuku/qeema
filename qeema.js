@@ -97,6 +97,8 @@
 		this.keydownEvent = keydownEvent;
 		this.inputEvents = [];
 		this.value = '';
+		this.pos = keydownEvent && 'selectionStart' in keydownEvent.target ?
+			keydownEvent.target.selectionStart : undefined;
 	}
 	// }}}
 
@@ -306,11 +308,14 @@
 		lastReceivedEvent = e.type;
 		consumed = false;
 
+		var etype = '[ keydown' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
+
 		if (window.opera) {
 			if (e.keyCode == 229 && !e.__delayedTrace) {
 				cop.keydownStack.push(new DelayedTraceItem(e));
 				enableLog && enableLogComposition && logit(
-					'[ keydown] *** stacked:', e.keyCode,
+					etype,
+					' *** stacked:', e.keyCode,
 					', length:', cop.keydownStack.length,
 					' ***'
 				);
@@ -327,7 +332,8 @@
 		}
 
 		enableLog && enableLogBasic && logit(
-			'[ keydown] keyCode:', e.keyCode,
+			etype,
+			' keyCode:', e.keyCode,
 			', which:', e.which,
 			', charCode:', e.charCode,
 			', shift:', e.shiftKey,
@@ -343,7 +349,7 @@
 				charCode = ctrlMap[e.keyCode];
 				keyCode = 0;
 				enableLog && enableLogBasic && logit(
-					'[ keydown] found ctrl-shortcut'
+					etype, ' found ctrl-shortcut'
 				);
 			}
 			else {
@@ -369,16 +375,22 @@
 
 	function keypress (e) {
 		lastReceivedEvent = e.type;
+
+		var etype = '[keypress' +
+			(e.type != 'keypress' ? ' (' + e.type + ' delegation)' : '') +
+			(e.__delayedTrace ? ' (delayed)' : '') +
+			']';
+
 		if (e.type == 'keypress' && consumed) {
 			if (consumed.defaultPrevented) {
 				enableLog && enableLogBasic && logit(
-					'[keypress] ignoring consumed keypress and prevented default action.'
+					etype, ' ignoring consumed keypress and prevented default action.'
 				);
 				e.preventDefault();
 			}
 			else {
 				enableLog && enableLogBasic && logit(
-					'[keypress] ignoring consumed keypress.'
+					etype, ' ignoring consumed keypress.'
 				);
 			}
 			consumed = false;
@@ -386,7 +398,7 @@
 		}
 
 		enableLog && enableLogBasic && logit(
-			(e.type != 'keypress' ? '[keypress (' + e.type + ' delegation)]' : '[keypress]'),
+			etype,
 			' keyCode:', e.keyCode,
 			', which:', e.which,
 			', charCode:', e.charCode,
@@ -476,8 +488,11 @@
 			return;
 		}
 
+		var etype = '[  keyup' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
+
 		enableLog && enableLogBasic && logit(
-			'[  keyup] keyCode:', e.keyCode,
+			etype,
+			' keyCode:', e.keyCode,
 			', which:', e.which,
 			', charCode:', e.charCode,
 			', shift:', e.shiftKey,
@@ -487,6 +502,8 @@
 	}
 
 	function keyupPresto (e) {
+		var etype = '[   keyup' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
+
 		/*
 		 * preparing
 		 */
@@ -497,7 +514,8 @@
 				cop.keyupStack.push(e);
 
 				enableLog && enableLogComposition && logit(
-					'[  keyup] *** stacked: ', e.keyCode,
+					etype,
+					' *** stacked: ', e.keyCode,
 					', ', cop.keydownStack.length,
 					' ***'
 				);
@@ -510,11 +528,17 @@
 			 */
 
 			if (!e.__delayedTrace) {
+				if (!isInComposition) {
+					cop.compositionStartPos = cop.keydownStack[0].pos - 1;
+					cop.lastCompositionLength = 0;
+				}
+
 				enableLog && enableLogComposition && logit(
-					'[  keyup] ***',
-					' delayed tracing start.',
-					' keydownStack.length:', cop.keydownStack.length,
-					', keyupStack.length:', cop.keyupStack.length,
+					etype,
+					' ***',
+					' delayed tracing phase 1 start.',
+					' keyupStack.length:', cop.keyupStack.length,
+					' position:', (cop.keyupStack[0] || {pos:'?'}).pos,
 					' ***'
 				);
 
@@ -535,12 +559,21 @@
 				}
 
 				enableLog && enableLogComposition && logit(
-					'[  keyup] *** delayed tracing end ***'
+					etype, ' *** delayed tracing phase 1 end ***'
 				);
 
 				if (cop.keydownStack.length != 1 || cop.keyupStack.length != 0) {
 					return;
 				}
+
+				enableLog && enableLogComposition && logit(
+					etype,
+					' ***',
+					' delayed tracing phase 2 start.',
+					' keydownStack.length:', cop.keydownStack.length,
+					' position:', (cop.keydownStack[0] || {pos:'?'}).pos,
+					' ***'
+				);
 
 				var delayedKeydown = cop.keydownStack.shift();
 				delayedKeydown.keydownEvent.__delayedTrace = true;
@@ -550,6 +583,11 @@
 					delayedKeydown.inputEvents[i].__delayedTrace = true;
 					inputPresto(delayedKeydown.inputEvents[i]);
 				}
+
+				enableLog && enableLogComposition && logit(
+					etype, ' *** delayed tracing phase 2 end ***'
+				);
+
 			}
 		}
 
@@ -557,12 +595,13 @@
 		 * keyup main
 		 */
 
-		if (e.keyCode == 16 || e.keyCode == 17) {
+		if (e.keyCode == 16 || e.keyCode == 17 || e.keyCode == 18) {
 			return;
 		}
 
 		enableLog && logit(
-			'[  keyup] keyCode:', e.keyCode,
+			etype,
+			' keyCode:', e.keyCode,
 			', which:', e.which,
 			', __v:"', e.__delayedValue, '"',
 			', v:"', e.target.value, '"'
@@ -594,7 +633,7 @@
 			 *
 			 */
 			var value = e.__delayedValue || e.target.value;
-			var composition, increment;
+			var composition;
 
 			if (isInComposition && cop.inputEventInvokedCount == 3) {
 				composition = value.substr(
@@ -603,7 +642,7 @@
 				pushCompositInputEvent(composition);
 
 				enableLog && enableLogComposition && logit(
-					'[  keyup] composition end(1) with:"', composition, '"'
+					etype, ' composition end(1) with:"', composition, '"'
 				);
 
 				clear(e);
@@ -611,7 +650,7 @@
 				cop.lastCompositionLength = value.length - lastValue.length;
 				fire('compositionstart', {data:''});
 				enableLog && enableLogComposition && logit(
-					'[  keyup] composition start(1)'
+					etype, ' composition start(1)'
 				);
 			}
 			else if (isInComposition && cop.inputEventInvokedCount == 2) {
@@ -622,7 +661,7 @@
 				pushCompositInputEvent(composition);
 
 				enableLog && enableLogComposition && logit(
-					'[  keyup] composition end(2) with:"', composition, '"'
+					etype, ' composition end(2) with:"', composition, '"'
 				);
 
 				clear(e);
@@ -636,7 +675,7 @@
 				fireCompositEnd('');
 
 				enableLog && enableLogComposition && logit(
-					'[  keyup] composition end(3)'
+					etype, ' composition end(3)'
 				);
 
 				clear(e);
@@ -648,14 +687,13 @@
 					fire('compositionstart', {data:''});
 
 					enableLog && enableLogComposition && logit(
-						'[  keyup] composition start(2)'
+						etype, ' composition start(2)'
 					);
-
-					cop.compositionStartPos = getIncreasePosition(lastValue, value);
-					cop.lastCompositionLength = 0;
 				}
-				increment = value.length - lastValue.length;
+
+				var increment = value.length - lastValue.length;
 				cop.lastCompositionLength += increment;
+
 				if (cop.lastCompositionLength > 0) {
 					composition = value.substr(
 						cop.compositionStartPos,
@@ -667,7 +705,7 @@
 					fireCompositEnd('');
 
 					enableLog && enableLogComposition && logit(
-						'[  keyup] composition end(4)'
+						etype, ' composition end(4)'
 					);
 
 					clear(e);
@@ -683,8 +721,10 @@
 	function inputWebkit (e) {
 		if (!ensureTarget(e)) return;
 
+		var etype = '[   input' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
+
 		enableLog && enableLogInput && logit(
-			'[  input] value:"', e.target.value, '"'
+			etype, ' value:"', e.target.value, '"'
 		);
 
 		switch (lastReceivedEvent) {
@@ -710,6 +750,8 @@
 	}
 
 	function inputPresto (e) {
+		var etype = '[   input' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
+
 		if (cop.keydownStack.length && !e.__delayedTrace) {
 			var last = cop.keydownStack[cop.keydownStack.length - 1];
 			if (!last.keydownEvent.repeat) {
@@ -718,7 +760,7 @@
 			}
 
 			enableLog && enableLogInput && logit(
-				'[  input] *** stacked: "', e.target.value + '"',
+				etype, ' *** stacked: "', e.target.value + '"',
 				', length:' + cop.keydownStack.length,
 				' ***'
 			);
@@ -732,7 +774,7 @@
 		cop.inputEventInvokedCount++;
 
 		enableLog && enableLogInput && logit(
-			'[  input] value:"', e.target.value + '"',
+			etype, ' value:"', e.target.value + '"',
 			', activeElement:',
 			[
 				document.activeElement.nodeName,
@@ -746,8 +788,10 @@
 	function inputGecko (e) {
 		if (!ensureTarget(e)) return;
 
+		var etype = '[   input' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
+
 		enableLog && enableLogInput && logit(
-			'[  input] value:"', e.target.value, '"'
+			etype, ' value:"', e.target.value, '"'
 		);
 
 		if (lastReceivedEvent == 'compositionend') {

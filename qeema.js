@@ -70,6 +70,7 @@
 		'bar':      '|'.charCodeAt(0),
 		'bslash':   '\\'.charCodeAt(0)
 	};
+	var PRIOR_KEYS_MANIFEST = 'data-prior-keys';
 	// }}}
 
 	// {{{1 classes
@@ -407,7 +408,7 @@
 		if (e.keyCode < 0) {
 			code = e.keyCode >= -32 ? -e.keyCode : e.keyCode;
 			getModifiers(c, e);
-			char = '<' + functionKeyCodes[-e.keyCode] + '>';
+			char = '';
 			stroke = functionKeyCodes[-e.keyCode];
 			isSpecial = true;
 		}
@@ -416,7 +417,7 @@
 		else if (e.charCode == 0) {
 			code = e.keyCode < 32 ? e.keyCode : -e.keyCode;
 			getModifiers(c, e);
-			char = '<' + functionKeyCodes[e.keyCode] + '>';
+			char = '';
 			stroke = functionKeyCodes[e.keyCode];
 			isSpecial = true;
 		}
@@ -424,9 +425,9 @@
 		// space is printable but allowed modifiers
 		else if (e.charCode == 32) {
 			code = ctrlKey && !altKey ? 0 : 32;
+			getModifiers(c, e);
 			char = String.fromCharCode(code);
 			stroke = functionKeyCodes[e.charCode];
-			getModifiers(c, e);
 			isSpecial = true;
 		}
 
@@ -438,6 +439,7 @@
 			if (code >= 0 && code <= 31) {
 				char = String.fromCharCode(code);
 				stroke = String.fromCharCode(code + 64).toLowerCase();
+				getModifiers(c, e);
 			}
 			// ^@ - ^_
 			else if (ctrlKey && !altKey) {
@@ -1143,6 +1145,54 @@
 		}
 	}
 
+	// shortcut manifest
+	function clearManifest () {
+		document.documentElement.removeAttribute(PRIOR_KEYS_MANIFEST);
+	}
+
+	function getManifest (asis) {
+		var m = document.documentElement.getAttribute(PRIOR_KEYS_MANIFEST) || '';
+
+		if (!asis) {
+			m = m.split(/ +/)
+				.map(function (k) {return k.replace('space', ' ')});
+		}
+
+		return m;
+	}
+
+	function setManifest (m) {
+		if (typeof m == 'string') {
+			;
+		}
+		else if (m instanceof Array) {
+			m = m.map(function (k) {return k.replace(' ', 'space')}).join(' ');
+		}
+		else {
+			return;
+		}
+
+		document.documentElement.setAttribute(PRIOR_KEYS_MANIFEST, m);
+	}
+
+	function addManifest () {
+		var keys = Array.prototype.slice.call(arguments);
+
+		var m = getManifest(true);
+		m += m != '' ? ' ' : '';
+		m += keys.map(function (k) {return k.replace(' ', 'space')})
+			.join(' ');
+
+		document.documentElement.setAttribute(PRIOR_KEYS_MANIFEST, m);
+	}
+
+	function regalizeManifest () {
+		var m = getManifest();
+		var hash = {};
+		m.forEach(function (k) {hash[k] = 1});
+		setManifest(Object.keys(hash));
+	}
+
 	// disposer
 	function dispose () {
 		for (var i in listeners) {
@@ -1166,13 +1216,16 @@
 		uninstall: {value:uninstall},
 		addListener: {value:addListener},
 		removeListener: {value:removeListener},
+
 		init: {value:init},
+
 		code2letter: {value:code2letter},
 		toInternalString: {value:toInternalString},
 		objectFromCode: {value:objectFromCode},
 		nopObjectFromCode: {value:nopObjectFromCode},
 		insertFnKeyHeader: {value:insertFnKeyHeader},
 		parseKeyDesc: {value:parseKeyDesc},
+
 		createSequences: {value:createSequences},
 		setDequeue: {value:setDequeue},
 		push: {value:push},
@@ -1182,6 +1235,12 @@
 		lock: {value:lock},
 		unlock: {value:unlock},
 		dispose: {value:dispose},
+
+		clearManifest: {value:clearManifest},
+		getManifest: {value:getManifest},
+		setManifest: {value:setManifest},
+		addManifest: {value:addManifest},
+		regalizeManifest: {value:regalizeManifest},
 
 		preserve: {
 			get: function () {return isPreserved},

@@ -83,27 +83,49 @@
 		this.ctrl = ctrl;
 		this.alt = alt;
 		this.isSpecial = isSpecial;
+		this.isCompositioned = false;
 		this.isCompositionedFirst = false;
 		this.isCompositionedLast = false;
 	}
 	VirtualInputEvent.prototype.preventDefault = function () {
-		if (this.nativeEvent) {
+		if (this.nativeEvent && !this.nativeEvent.defaultPrevented) {
 			this.nativeEvent.preventDefault();
-			this.nativeEvent = null;
 		}
 	};
 
-	function DelayedTraceItem (keydownEvent) {
-		this.keydownEvent = keydownEvent;
-		this.inputEvents = [];
-		this.value = '';
-		this.pos = keydownEvent && 'selectionStart' in keydownEvent.target ?
-			keydownEvent.target.selectionStart : undefined;
+	function CompositionResult (e) {
+		this.prefix = '';
+		this.composition = '';
+		if (e) {
+			this.before = e.target.value;
+			this.position = e.target.selectionStart;
+		}
 	}
+	CompositionResult.prototype.run = function (e) {
+		var t = e.target;
+		t.value = this.before;
+		t.selectionStart = this.position;
+		t.selectionEnd = this.position;
+
+		var data = this.prefix + this.composition;
+		for (var i = 0, goal = data.length; i < goal; i++) {
+			var ev = new VirtualInputEvent(
+				e,
+				data.charCodeAt(i), data.charAt(i), data.charAt(i),
+				false, false, false,
+				false
+			);
+			ev.isCompositioned = true;
+			ev.isCompositionedFirst = i == 0;
+			ev.isCompositionedLast = i == goal - 1;
+			dequeue.push(ev);
+		}
+
+		sweep();
+	};
 	// }}}
 
 	// {{{1 variables
-	var target;
 	var listeners = {
 		input: [],
 		compositionstart: [],
@@ -121,29 +143,28 @@
 	var ctrlMap = null;
 	var consumed;
 	var lastReceivedEvent = '';
-	var lastFiredEvent = '';
 	var dequeue = [];
 	var lockCount = 0;
 	var isSweeping = false;
 	var enableLog = false;
-	var enableLogBasic = false;
-	var enableLogComposition = false;
-	var enableLogInput = false;
+	var logs = {
+		basic: false,
+		composition: false,
+		input: false
+	};
 
 	// for general composition
-	var lastValue = '';
 	var isInComposition = false;
-	var isPreserved = false;
 	var compositionResult = null;
+	var compositionFinishTimer;
+
+	// for composition on WebKit
+	var lastValue = '';
 
 	// for composition on Presto
-	var cop = {
-		keydownCode: -1,
-		compositionStartPos: -1,
-		lastCompositionLength: -1,
-		inputEventInvokedCount: 0,
-		keydownStack: [],
-		keyupStack: [],
+	var cop2 = {
+		before: '',
+		preEvents: []
 	};
 	// }}}
 
@@ -162,12 +183,10 @@
 
 	function getKeydownListener () {
 		if (global.chrome || global.opera) return keydown;
-		if (global.gecko) return null;
 	}
 
 	function getKeyupListener () {
 		if (global.opera) return keyupPresto;
-		if (global.gecko) return keyup;
 	}
 
 	function getInputListener () {
@@ -232,106 +251,211 @@
 		return -1;
 	}
 
-	function getIncreasedString (before, current) {
-		var pos = getIncreasePosition(before, current);
-		return pos >= 0 ?
-			current.substr(pos, current.length - before.length) :
-			'';
-	}
-
-	function pushInputEvent (e) {
-		if (lockCount > 0 && e.code == 3) {
-			fire('input', e);
-		}
-		else {
-			dequeue.push(e);
-			sweep();
-		}
-	}
-
-	function pushCompositInputEvent (data) {
-		if (lastFiredEvent == 'compositionupdate'
-		&& !fireCompositEnd(data)) {
-			return;
-		}
-
-		for (var i = 0, goal = data.length; i < goal; i++) {
-			var ev = new VirtualInputEvent(
-				null,
-				data.charCodeAt(i), data.charAt(i), data.charAt(i),
-				false, false, false,
-				false
-			);
-			ev.isCompositionedFirst = i == 0;
-			ev.isCompositionedLast = i == goal - 1;
-			dequeue.push(ev);
-		}
-
-		sweep();
-	}
-
 	function fire (eventName, e) {
-		lastFiredEvent = eventName;
 		var l = listeners[eventName];
+		var prevented = false;
 		for (var i = 0, goal = l.length; i < goal; i++) {
-			if (l[i](e) === false) {
+			if (l[i](e) === false && eventName == 'input') {
 				e.preventDefault();
 				if (consumed) {
 					consumed.defaultPrevented = true;
 				}
-			};
+				prevented = true;
+			}
+		}
+
+		if (prevented) {
+			//removeCompositionCanceledChar(e);
+			return false;
+		}
+		else {
+			insertCompositionedChar(e);
+			return true;
 		}
 	}
 
-	function fireCompositEnd (data) {
-		lastFiredEvent = 'compositionend';
+	function fireComposition (eventNameFragment, data) {
 		var e = {data: data};
-		var l = listeners.compositionend;
+		var l = listeners['composition' + eventNameFragment];
+		var prevented = false;
 		for (var i = 0, goal = l.length; i < goal; i++) {
 			if (l[i](e) === false) {
-				return false;
+				prevented = true;
 			}
 		}
+		return !prevented;
+	}
+
+	function fireCompositionStart (data) {
+		return fireComposition('start', data);
+	}
+
+	function fireCompositionUpdate (data) {
+		return fireComposition('update', data);
+	}
+
+	function fireCompositionEnd (data) {
+		return fireComposition('end', data);
+	}
+
+	function isEditable (e) {
+		var t = e.target || e.nativeEvent && e.nativeEvent.target;
+		if (!t) return false;
+		if (!('selectionStart' in t
+			&& 'selectionEnd' in t
+			&& 'value' in t)) return false;
+
 		return true;
 	}
 
-	function ensureTarget (e) {
-		return !target || target == e.target;
+	function insertCompositionedChar (e) {
+		if (!(e instanceof VirtualInputEvent)) return;
+		if (e.code < 0) return;
+		if (!e.isCompositioned) return;
+		if (!isEditable(e)) return;
+
+		var t = e.nativeEvent.target;
+		if (t.readOnly) return;
+
+		var v = t.value;
+		var p = t.selectionStart;
+
+		t.value = v.substring(0, t.selectionStart) +
+				  String.fromCharCode(e.code) +
+				  v.substring(t.selectionEnd);
+		t.selectionStart = p + 1;
+		t.selectionEnd = p + 1;
 	}
 
-	function clear (e) {
-		!isPreserved && init('');
+	function removeCompositionCanceledChar (e) {
+		if (!(e instanceof VirtualInputEvent)) return;
+		if (e.code < 0) return;
+		if (!e.isCompositioned) return;
+		if (!isEditable(e)) return;
+
+		var t = e.nativeEvent.target;
+		if (t.readOnly) return;
+
+		var v = t.value;
+		var p = e.position;
+		var ss = t.selectionStart;
+		var se = t.selectionEnd;
+
+		if (p >= 0 && p < v.length) {
+			t.value = v.substring(0, p) + v.substring(p + 1);
+		}
+		if (ss > p && ss > 0) {
+			t.selectionStart = ss - 1;
+		}
+		if (se > p && se > 0) {
+			t.selectionEnd = se - 1;
+		}
+
+		for (var i = 0; i < dequeue.length; i++) {
+			var next = dequeue[i];
+			if (!next.nativeEvent) break;
+			if (next.nativeEvent.target != t) break;
+			if (!('position' in next)) break;
+
+			next.position--;
+		}
+	}
+
+	function registerCompositionFinish (e) {
+		compositionFinishTimer = setTimeout(function () {
+			enableLog && logs.composition && logit(
+				'[compositionResult invoker]'
+			);
+
+			compositionFinishTimer = null;
+			compositionResult.run(e);
+			compositionResult = null;
+		}, 1);
 	}
 
 	// {{{1 internal listeners
-	function keydown (e) {
-		lastReceivedEvent = e.type;
-		consumed = false;
+	function compositionstart (e) {
+		enableLog && logs.composition && logit(
+			'[compositionstart] "', e.data, '"'
+		);
 
-		var etype = '[ keydown' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
-
-		if (window.opera) {
-			if (e.keyCode == 229 && !e.__delayedTrace) {
-				cop.keydownStack.push(new DelayedTraceItem(e));
-				enableLog && enableLogComposition && logit(
-					etype,
-					' *** stacked:', e.keyCode,
-					', length:', cop.keydownStack.length,
-					' ***'
-				);
-				return;
-			}
-			cop.keydownCode = e.keyCode;
-			cop.inputEventInvokedCount = 0;
+		if (compositionFinishTimer) {
+			clearTimeout(compositionFinishTimer);
+			compositionFinishTimer = null;
 		}
 
+		if (compositionResult) {
+			compositionResult.prefix += compositionResult.composition;
+		}
+		else {
+			compositionResult = new CompositionResult(e);
+		}
+
+		lastReceivedEvent = e.type;
+		isInComposition = true;
+		fireCompositionStart(e.data);
+	}
+
+	function compositionupdate (e) {
+		enableLog && logs.composition && logit(
+			'[compositionupdate] "', e.data, '"'
+		);
+
+		lastReceivedEvent = e.type;
+		fireCompositionUpdate(e.data);
+	}
+
+	function compositionend (e) {
+		enableLog && logs.composition && logit(
+			'[compositionend] "', e.data, '"'
+		);
+
+		lastReceivedEvent = e.type;
+		if (compositionResult) {
+			compositionResult.composition = e.data;
+		}
+		isInComposition = false;
+	}
+
+	function keydown (e) {
 		if (e.shiftKey && e.keyCode == 16
 		||  e.ctrlKey && e.keyCode == 17
 		||  e.altKey && e.keyCode == 18) {
 			return;
 		}
 
-		enableLog && enableLogBasic && logit(
+		lastReceivedEvent = e.type;
+		consumed = false;
+		var etype = '[ keydown]';
+
+		if (window.opera && e.keyCode == 229) {
+			var value;
+			if (!isInComposition) {
+				if (!e.repeat && e.target.selectionStart > 0) {
+					var t = e.target;
+					value = t.value.substring(0, t.selectionStart - 1) +
+							t.value.substring(t.selectionStart);
+				}
+				else {
+					value = '';
+				}
+				cop2.before = value;
+			}
+
+			cop2.preEvents.push({
+				repeat: e.repeat,
+				inputEventCount: 0
+			});
+
+			enableLog && logs.composition && logit(
+				' *** preEvents pushed at keydown event ***',
+				value == undefined ? '' : (', original string initialized: "' + value + '"')
+			);
+
+			return;
+		}
+
+		enableLog && logs.basic && logit(
 			etype,
 			' keyCode:', e.keyCode,
 			', which:', e.which,
@@ -348,7 +472,7 @@
 			if (e.ctrlKey && !e.altKey && ctrlMap && e.keyCode in ctrlMap) {
 				charCode = ctrlMap[e.keyCode];
 				keyCode = 0;
-				enableLog && enableLogBasic && logit(
+				enableLog && logs.basic && logit(
 					etype, ' found ctrl-shortcut'
 				);
 			}
@@ -378,18 +502,17 @@
 
 		var etype = '[keypress' +
 			(e.type != 'keypress' ? ' (' + e.type + ' delegation)' : '') +
-			(e.__delayedTrace ? ' (delayed)' : '') +
 			']';
 
 		if (e.type == 'keypress' && consumed) {
 			if (consumed.defaultPrevented) {
-				enableLog && enableLogBasic && logit(
+				enableLog && logs.basic && logit(
 					etype, ' ignoring consumed keypress and prevented default action.'
 				);
 				e.preventDefault();
 			}
 			else {
-				enableLog && enableLogBasic && logit(
+				enableLog && logs.basic && logit(
 					etype, ' ignoring consumed keypress.'
 				);
 			}
@@ -397,7 +520,7 @@
 			return;
 		}
 
-		enableLog && enableLogBasic && logit(
+		enableLog && logs.basic && logit(
 			etype,
 			' keyCode:', e.keyCode,
 			', which:', e.which,
@@ -475,10 +598,19 @@
 		if (stroke == undefined) return;
 
 		c.push(stroke);
-		pushInputEvent(new VirtualInputEvent(
+
+		var ev = new VirtualInputEvent(
 			e,
 			code, char, c.join('-'),
-			shiftKey, ctrlKey, altKey, isSpecial));
+			shiftKey, ctrlKey, altKey, isSpecial);
+
+		if (lockCount > 0 && code == 3) {
+			fire('input', ev);
+		}
+		else {
+			dequeue.push(ev);
+			sweep();
+		}
 	}
 
 	function keyup (e) {
@@ -488,10 +620,8 @@
 			return;
 		}
 
-		var etype = '[  keyup' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
-
-		enableLog && enableLogBasic && logit(
-			etype,
+		enableLog && logs.basic && logit(
+			'[  keyup]',
 			' keyCode:', e.keyCode,
 			', which:', e.which,
 			', charCode:', e.charCode,
@@ -502,246 +632,159 @@
 	}
 
 	function keyupPresto (e) {
-		var etype = '[   keyup' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
-
-		/*
-		 * preparing
-		 */
-
-		if (cop.keydownStack.length) {
-			cop.keydownStack = cop.keydownStack.filter(function (item) {return !item.keydownEvent.repeat});
-			if (cop.keyupStack.length != cop.keydownStack.length - 1 && !e.__delayedTrace) {
-				cop.keyupStack.push(e);
-
-				enableLog && enableLogComposition && logit(
-					etype,
-					' *** stacked: ', e.keyCode,
-					', ', cop.keydownStack.length,
-					' ***'
-				);
-
-				return;
-			}
-
-			/*
-			 * process all of stacked events
-			 */
-
-			if (!e.__delayedTrace) {
-				if (!isInComposition) {
-					cop.compositionStartPos = cop.keydownStack[0].pos - 1;
-					cop.lastCompositionLength = 0;
-				}
-
-				enableLog && enableLogComposition && logit(
-					etype,
-					' ***',
-					' delayed tracing phase 1 start.',
-					' keyupStack.length:', cop.keyupStack.length,
-					' position:', (cop.keyupStack[0] || {pos:'?'}).pos,
-					' ***'
-				);
-
-				while (cop.keyupStack.length) {
-					var delayedKeydown = cop.keydownStack.shift();
-					delayedKeydown.keydownEvent.__delayedTrace = true;
-					keydown(delayedKeydown.keydownEvent);
-
-					for (var i = 0, goal = delayedKeydown.inputEvents.length; i < goal; i++) {
-						delayedKeydown.inputEvents[i].__delayedTrace = true;
-						inputPresto(delayedKeydown.inputEvents[i]);
-					}
-
-					var delayedKeyup = cop.keyupStack.shift();
-					delayedKeyup.__delayedValue = delayedKeydown.value;
-					delayedKeyup.__delayedTrace = true;
-					keyupPresto(delayedKeyup);
-				}
-
-				enableLog && enableLogComposition && logit(
-					etype, ' *** delayed tracing phase 1 end ***'
-				);
-
-				if (cop.keydownStack.length != 1 || cop.keyupStack.length != 0) {
-					return;
-				}
-
-				enableLog && enableLogComposition && logit(
-					etype,
-					' ***',
-					' delayed tracing phase 2 start.',
-					' keydownStack.length:', cop.keydownStack.length,
-					' position:', (cop.keydownStack[0] || {pos:'?'}).pos,
-					' ***'
-				);
-
-				var delayedKeydown = cop.keydownStack.shift();
-				delayedKeydown.keydownEvent.__delayedTrace = true;
-				keydown(delayedKeydown.keydownEvent);
-
-				for (var i = 0, goal = delayedKeydown.inputEvents.length; i < goal; i++) {
-					delayedKeydown.inputEvents[i].__delayedTrace = true;
-					inputPresto(delayedKeydown.inputEvents[i]);
-				}
-
-				enableLog && enableLogComposition && logit(
-					etype, ' *** delayed tracing phase 2 end ***'
-				);
-
-			}
-		}
-
-		/*
-		 * keyup main
-		 */
-
-		if (e.keyCode == 16 || e.keyCode == 17 || e.keyCode == 18) {
+		// {{{2
+		if (e.shiftKey && e.keyCode == 16
+		||  e.ctrlKey && e.keyCode == 17
+		||  e.altKey && e.keyCode == 18) {
 			return;
 		}
 
-		enableLog && logit(
+		var etype = '[   keyup]';
+
+		if (cop2.preEvents.length) {
+			var current = e.target.value;
+			var item = cop2.preEvents.shift();
+			var incPos = getIncreasePosition(cop2.before, current);
+			var composition = current.substr(
+				incPos, current.length - cop2.before.length);
+
+			while (cop2.preEvents.length && cop2.preEvents[0].repeat) {
+				cop2.preEvents.shift();
+			}
+
+			enableLog && logs.composition && logit([
+				etype,
+				'           before: "' + cop2.before + '"',
+				'          current: "' + current + '"',
+				'      composition: "' + composition + '"',
+				'  inputEventCount: ' + item.inputEventCount,
+				'           incPos: ' + incPos
+			].join('\n'));
+
+			if (isInComposition) {
+				/*
+				 * 1. implicit fix:
+				 * [keydown]	keyCode: 229, which: 229
+				 * [input]		value:"...X" (X is the character which raised fixation)
+				 * [input]		value:"...X" (X is the character which raised fixation)
+				 * [input]		value:"...X" (X is the character which raised fixation)
+				 * [keyup]		keyCode: Y, which: Y
+				 *
+				 * 2. explicit fix:
+				 * [keydown]	keyCode: 229, which: 229
+				 * [input]		value:"..."
+				 * [input]		value:"..."
+				 * [keyup]		keyCode: 13, which: 13
+				 *
+				 * 3. selecting a candidate
+				 * [keydown]	keyCode: 229, which: 229
+				 * [input]		value:"..."
+				 * [keyup]		keyCode: Y, which: Y
+				 *
+				 * 4. escaping a composition
+				 * [keydown]	keyCode: 229, which: 229
+				 * [keyup]		keyCode: 27, which: 27
+				 *
+				 */
+
+				// implicit fix
+				if (item.inputEventCount == 3) {
+					// close current composition session
+					e.data = composition.substr(0, composition.length - 1);
+					compositionend(e);
+
+					// open new composition session
+					cop2.before = cop2.before.substring(0, incPos) +
+								  composition.substr(0, composition.length - 1) +
+								  cop2.before.substring(incPos + composition.length);
+
+					e.data = '';
+					compositionstart(e);
+					compositionResult.prefix = '';
+
+					e.data = composition.substr(-1);
+					compositionupdate(e);
+				}
+
+				// explicit fix
+				// canceling
+				// composition extinction
+				else if (item.inputEventCount == 2
+				|| e.keyCode == 27 && cop2.inputEventCount == 0
+				|| cop2.before == current) {
+					e.data = composition;
+					compositionend(e);
+
+					var incPos2 = getIncreasePosition(
+						compositionResult.before, current);
+					if (incPos2 >= 0) {
+						compositionResult.composition = current.substr(
+							incPos2,
+							current.length - compositionResult.before.length);
+						registerCompositionFinish(e);
+					}
+				}
+
+				// composition update
+				else {
+					e.data = composition;
+					compositionupdate(e);
+				}
+			}
+			
+			// new composition session
+			else {
+				e.data = '';
+				compositionstart(e);
+				compositionResult.before = cop2.before;
+				compositionResult.position--;
+
+				e.data = composition;
+				compositionupdate(e);
+			}
+		}
+
+		enableLog && logs.basic && logit(
 			etype,
 			' keyCode:', e.keyCode,
 			', which:', e.which,
-			', __v:"', e.__delayedValue, '"',
-			', v:"', e.target.value, '"'
+			', charCode:', e.charCode,
+			', shift:', e.shiftKey,
+			', ctrl:', e.ctrlKey,
+			', alt:', e.altKey
 		);
-
-		if (cop.keydownCode == 229 || isInComposition) {
-			/*
-			 * 1. implicit fix:
-			 * [keydown]	keyCode: 229, which: 229
-			 * [input]		value:"...X" (X is the character which raised fixation)
-			 * [input]		value:"...X" (X is the character which raised fixation)
-			 * [input]		value:"...X" (X is the character which raised fixation)
-			 * [keyup]		keyCode: Y, which: Y
-			 *
-			 * 2. explicit fix:
-			 * [keydown]	keyCode: 229, which: 229
-			 * [input]		value:"..."
-			 * [input]		value:"..."
-			 * [keyup]		keyCode: 13, which: 13
-			 *
-			 * 3. selecting a candidate
-			 * [keydown]	keyCode: 229, which: 229
-			 * [input]		value:"..."
-			 * [keyup]		keyCode: Y, which: Y
-			 *
-			 * 4. escaping a composition
-			 * [keydown]	keyCode: 229, which: 229
-			 * [keyup]		keyCode: 27, which: 27
-			 *
-			 */
-			var value = e.__delayedValue || e.target.value;
-			var composition;
-
-			if (isInComposition && cop.inputEventInvokedCount == 3) {
-				composition = value.substr(
-					cop.compositionStartPos,
-					cop.lastCompositionLength);
-				pushCompositInputEvent(composition);
-
-				enableLog && enableLogComposition && logit(
-					etype, ' composition end(1) with:"', composition, '"'
-				);
-
-				clear(e);
-				cop.compositionStartPos += cop.lastCompositionLength;
-				cop.lastCompositionLength = value.length - lastValue.length;
-				fire('compositionstart', {data:''});
-				enableLog && enableLogComposition && logit(
-					etype, ' composition start(1)'
-				);
-			}
-			else if (isInComposition && cop.inputEventInvokedCount == 2) {
-				isInComposition = false;
-				composition = value.substr(
-					cop.compositionStartPos,
-					cop.lastCompositionLength + value.length - lastValue.length);
-				pushCompositInputEvent(composition);
-
-				enableLog && enableLogComposition && logit(
-					etype, ' composition end(2) with:"', composition, '"'
-				);
-
-				clear(e);
-				value = e.target.value;
-			}
-			else if (
-				isInComposition &&
-				(e.keyCode == 27 && cop.inputEventInvokedCount == 0)
-			) {
-				isInComposition = false;
-				fireCompositEnd('');
-
-				enableLog && enableLogComposition && logit(
-					etype, ' composition end(3)'
-				);
-
-				clear(e);
-				value = e.target.value;
-			}
-			else if (value != lastValue) {
-				if (!isInComposition) {
-					isInComposition = true;
-					fire('compositionstart', {data:''});
-
-					enableLog && enableLogComposition && logit(
-						etype, ' composition start(2)'
-					);
-				}
-
-				var increment = value.length - lastValue.length;
-				cop.lastCompositionLength += increment;
-
-				if (cop.lastCompositionLength > 0) {
-					composition = value.substr(
-						cop.compositionStartPos,
-						cop.lastCompositionLength);
-					fire('compositionupdate', {data:composition});
-				}
-				else {
-					isInComposition = false;
-					fireCompositEnd('');
-
-					enableLog && enableLogComposition && logit(
-						etype, ' composition end(4)'
-					);
-
-					clear(e);
-					value = e.target.value;
-				}
-			}
-			cop.inputEventInvokedCount = 0;
-			cop.keydownCode = -1;
-			lastValue = value;
-		}
+		// }}}
 	}
 
 	function inputWebkit (e) {
-		if (!ensureTarget(e)) return;
+		var etype = '[   input]';
 
-		var etype = '[   input' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
-
-		enableLog && enableLogInput && logit(
+		enableLog && logs.input && logit(
 			etype, ' value:"', e.target.value, '"'
 		);
 
 		switch (lastReceivedEvent) {
 		case 'keydown':
-			var s = getIncreasedString(lastValue, e.target.value);
-			if (s != '') {
-				fire('compositionstart', {data:''});
-				fire('compositionupdate', {data:s});
-				pushCompositInputEvent(s);
+			var current = e.target.value;
+			var pos = getIncreasePosition(lastValue, current);
+			if (pos >= 0) {
+				var s = current.substr(pos, current.length - lastValue.length);
+				if (s != '') {
+					fireCompositionStart('');
+					fireCompositionUpdate(s);
+					fireCompositionEnd(s);
+
+					var cr = new CompositionResult;
+					cr.composition = s;
+					cr.before = lastValue;
+					cr.position = pos;
+					cr.run(e);
+				}
 			}
-			clear(e);
 			break;
 
 		case 'compositionend':
-			pushCompositInputEvent(compositionResult);
-			compositionResult = null;
-			clear(e);
+			registerCompositionFinish(e);
 			break;
 		}
 
@@ -750,92 +793,34 @@
 	}
 
 	function inputPresto (e) {
-		var etype = '[   input' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
+		var etype = '[   input]';
 
-		if (cop.keydownStack.length && !e.__delayedTrace) {
-			var last = cop.keydownStack[cop.keydownStack.length - 1];
-			if (!last.keydownEvent.repeat) {
-				last.inputEvents.push(e);
-				last.value = e.target.value;
-			}
+		enableLog && logs.input && logit(
+			etype, ' value:"', e.target.value + '"'
+		);
 
-			enableLog && enableLogInput && logit(
-				etype, ' *** stacked: "', e.target.value + '"',
-				', length:' + cop.keydownStack.length,
-				' ***'
-			);
-
-			return;
+		if (cop2.preEvents.length) {
+			var last = cop2.preEvents[cop2.preEvents.length - 1];
+			last.inputEventCount++;
 		}
 
-		if (!ensureTarget(e)) return;
-
 		lastReceivedEvent = e.type;
-		cop.inputEventInvokedCount++;
-
-		enableLog && enableLogInput && logit(
-			etype, ' value:"', e.target.value + '"',
-			', activeElement:',
-			[
-				document.activeElement.nodeName,
-				document.activeElement.id,
-				document.activeElement.style.display
-			].join('/'),
-			', inputEventInvokedCount: ', cop.inputEventInvokedCount
-		);
 	}
 
 	function inputGecko (e) {
-		if (!ensureTarget(e)) return;
+		var etype = '[   input]';
 
-		var etype = '[   input' + (e.__delayedTrace ? ' (delayed)' : '') + ']';
-
-		enableLog && enableLogInput && logit(
+		enableLog && logs.input && logit(
 			etype, ' value:"', e.target.value, '"'
 		);
 
 		if (lastReceivedEvent == 'compositionend') {
-			pushCompositInputEvent(compositionResult);
-			clear(e);
-			compositionResult = null;
+			registerCompositionFinish(e);
 		}
+
 		lastReceivedEvent = e.type;
 	}
 
-	function compositionstart (e) {
-		if (!ensureTarget(e)) return;
-
-		enableLog && enableLogComposition && logit(
-			'[compositionstart] "', e.data, '"'
-		);
-
-		lastReceivedEvent = e.type;
-		isInComposition = true;
-		fire('compositionstart', {data:e.data});
-	}
-
-	function compositionupdate (e) {
-		if (!ensureTarget(e)) return;
-
-		enableLog && enableLogComposition && logit(
-			'[compositionupdate] "', e.data, '"'
-		);
-
-		lastReceivedEvent = e.type;
-		fire('compositionupdate', {data:e.data});
-	}
-
-	function compositionend (e) {
-		if (!ensureTarget(e)) return;
-
-		enableLog && enableLogComposition && logit(
-			'[compositionend] "', e.data, '"'
-		);
-
-		lastReceivedEvent = e.type;
-		compositionResult = e.data;
-		isInComposition = false;
-	}
 	// }}}
 
 	// {{{1 publics
@@ -905,35 +890,6 @@
 		}
 
 		return this;
-	}
-
-	// composition initializer
-	function init (aleading) {
-		if (!target) return;
-		if (typeof aleading == 'object'
-		&& 'value' in aleading
-		&& 'selectionStart' in aleading) {
-			var element = aleading;
-			lastValue = aleading = element.value.substring(
-				0, element.selectionStart);
-			if (target != element && !isPreserved) {
-				target.value = aleading;
-			}
-		}
-		else {
-			lastValue = target.value = aleading || '';
-			if (!isPreserved) {
-				target.value = lastValue;
-			}
-		}
-
-		isInComposition = false;
-		compositionResult = null;
-
-		cop.keydownCode = -1;
-		cop.compositionStartPos = -1;
-		cop.lastCompositionLength = -1;
-		cop.inputEventInvokedCount = 0;
 	}
 
 	// code utils
@@ -1084,7 +1040,7 @@
 	}
 
 	// dequeue manipulators
-	function createSequences (s) {
+	function createSequences (s, asComposition) {
 		var result = [];
 		for (var i = 0, goal = s.length; i < goal; i++) {
 			var parseResult;
@@ -1095,9 +1051,22 @@
 			else {
 				parseResult = parseKeyDesc(s.substring(i));
 			}
-			parseResult.prop && result.push(parseResult.prop);
+
+			if (parseResult.prop) {
+				if (asComposition) {
+					parseResult.prop.isCompositioned = true;
+				}
+				result.push(parseResult.prop);
+			}
+
 			i += parseResult.consumed - 1;
 		}
+
+		if (asComposition && result.length) {
+			result[0].isCompositionedFirst = true;
+			result[result.length - 1].isCompositionedLast = true;
+		}
+
 		return result;
 	}
 
@@ -1112,12 +1081,7 @@
 			}
 			else if (typeof s == 'object') {
 				if ('value' in s && s.asComposition) {
-					s = createSequences(s.value);
-					if (s.length) {
-						s[0].isCompositionedFirst = true;
-						s[s.length - 1].isCompositionedLast = true;
-					}
-					items.push.apply(items, s);
+					items.push.apply(items, createSequences(s.value, true));
 				}
 				else {
 					items.push(s);
@@ -1261,8 +1225,6 @@
 		addListener: {value:addListener},
 		removeListener: {value:removeListener},
 
-		init: {value:init},
-
 		code2letter: {value:code2letter},
 		toInternalString: {value:toInternalString},
 		objectFromCode: {value:objectFromCode},
@@ -1286,38 +1248,28 @@
 		addManifest: {value:addManifest},
 		regalizeManifest: {value:regalizeManifest},
 
-		preserve: {
-			get: function () {return isPreserved},
-			set: function (v) {isPreserved = !!v}
-		},
-		target: {
-			get: function () {return target},
-			set: function (v) {
-				target = v;
-				init(v.value);
-			}
-		},
 		isInComposition: {
 			get: function () {return isInComposition}
 		},
 		isLocked: {
 			get: function () {return lockCount > 0}
 		},
+
 		log: {
 			get: function () {return enableLog},
 			set: function (v) {enableLog = !!v}
 		},
 		logBasic: {
-			get: function () {return enableLogBasic},
-			set: function (v) {enableLogBasic = !!v}
+			get: function () {return logs.basic},
+			set: function (v) {logs.basic = !!v}
 		},
 		logComposition: {
-			get: function () {return enableLogComposition},
-			set: function (v) {enableLogComposition = !!v}
+			get: function () {return logs.composition},
+			set: function (v) {logs.composition = !!v}
 		},
 		logInput: {
-			get: function () {return enableLogInput},
-			set: function (v) {enableLogInput = !!v}
+			get: function () {return logs.input},
+			set: function (v) {logs.input = !!v}
 		}
 	});
 })(this);

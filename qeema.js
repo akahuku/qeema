@@ -372,6 +372,7 @@
 			compositionResult = null;
 		}, 1);
 	}
+	// }}}
 
 	// {{{1 internal listeners
 	function compositionstart (e) {
@@ -411,6 +412,7 @@
 		);
 
 		lastReceivedEvent = e.type;
+		fireCompositionEnd(e.data);
 		if (compositionResult) {
 			compositionResult.composition = e.data;
 		}
@@ -939,10 +941,6 @@
 		);
 	}
 
-	function nopObjectFromCode () {
-		return nopObject;
-	}
-
 	function insertFnKeyHeader (s) {
 		return s.replace(/(\u0016)?(<[^>]+>|#\d{1,2})/g, function ($0, $1) {
 			return $1 == '\u0016' ? $0 : '\ue000' + $0;
@@ -1228,7 +1226,7 @@
 		code2letter: {value:code2letter},
 		toInternalString: {value:toInternalString},
 		objectFromCode: {value:objectFromCode},
-		nopObjectFromCode: {value:nopObjectFromCode},
+		nopObject: {value:nopObject},
 		insertFnKeyHeader: {value:insertFnKeyHeader},
 		parseKeyDesc: {value:parseKeyDesc},
 

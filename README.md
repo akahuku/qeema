@@ -22,12 +22,12 @@ qeema はそれらを吸収し、統合された単一のキー入力イベン�
 
 * code (number): 入力された文字のコードポイント。ただし、機能キーの場合は負の値
 * char (string): 入力された文字そのもの。機能キーの場合は "<機能キー名>"
-* key (string): 入力されたキーストローク。機能キーについて Shift、Ctrl、Alt が
-  押されている場合に "S-"、"C-"、"A-" が付加される
+* key (string): 入力されたキーストローク。機能キーについて Shift、Ctrl、Alt が押されている場合に "S-"、"C-"、"A-" が付加される
 * shift (boolean): Shift キーが押されていたとき true
 * ctrl (boolean): Ctrl キーが押されていたとき true
 * alt (boolean): Alt キーが押されていたとき true
 * isSpecial (boolean): 機能キーであるとき true
+* isCompositioned (boolean): IME を通して入力された文字列であるとき true
 * isCompositionedFirst (boolean): IME を通して入力された文字列の先頭であるとき true
 * isCompositionedLast (boolean): IME を通して入力された文字列の最後であるとき true
 
@@ -44,18 +44,26 @@ qeema.addListener(function (e) {
 });
 ```
 
-`qeema.install()` は最初に 1 度だけ呼びます。登録したキー入力イベントのリスナーで false を返すことにより、キー入力のデフォルトのアクションを取り消すことができます。
+`qeema.install()` は最初に 1 度だけ呼びます。登録したキー入力イベントのリスナーで false を返すことにより、キー入力のデフォルトのアクションを取り消すことができます。アクションの取り消しの対象は IME を通した文字列の入力も含まれます。
 
 
 
 # その他のイベント
 
+* input
 * compositionstart
 * compositionupdate
 * compositionend
 * log
 
 以下のコードでリスンすることができます:
+
+```
+qeema.addListener('input', function (e) {
+	// e がキー入力イベント
+});
+```
+`qeema.addListener(function (e) { ...})` は input イベントに対するハンドラ登録のショートカットです。
 
 ```
 qeema.addListener('compositionstart', function (e) {

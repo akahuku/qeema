@@ -24,6 +24,15 @@ document.addEventListener('DOMContentLoaded', function () {
 		return (result.join('') + '---').substr(0, 3);
 	}
 
+	function getComposition (e) {
+		result = [];
+		if (e.isCompositioned) result.push('yes');
+		if (e.isCompositionedFirst) result.push('(first)');
+		if (e.isCompositionedLast) result.push('(last)');
+		if (result.length == 0) result.push('no');
+		return result.join(' ');
+	}
+
 	function repeat (s, len) {
 		var result = '';
 		for (var i = 0; i < len; i++) {
@@ -60,10 +69,15 @@ document.addEventListener('DOMContentLoaded', function () {
 		}
 	}
 
+	function paste (e) {
+		log('paste event fired');
+	}
+
 	[document].forEach(function (target) {
 		target.addEventListener('keydown', keydown, false);
 		target.addEventListener('keypress', keypress, false);
 		target.addEventListener('keydown', keyup, false);
+		target.addEventListener('paste', paste, false);
 	});
 
 	qeema
@@ -74,7 +88,8 @@ document.addEventListener('DOMContentLoaded', function () {
 				' [char: ' + lset(getChar(e), 16) + ']' +
 				' [key: ' + lset(e.key, 16) + ']' +
 				' [modifier: ' + getModifiers(e) + ']' +
-				' [isSpecial: ' + e.isSpecial + ']'
+				' [isSpecial: ' + lset(e.isSpecial, 5) + ']' +
+				' [composition: ' + getComposition(e) + ']'
 			);
 			if ($('p1').checked) {
 				return false;

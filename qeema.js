@@ -106,22 +106,7 @@
 		t.value = this.before;
 		t.selectionStart = this.position;
 		t.selectionEnd = this.position;
-
-		var data = this.prefix + this.composition;
-		for (var i = 0, goal = data.length; i < goal; i++) {
-			var ev = new VirtualInputEvent(
-				e,
-				data.charCodeAt(i), data.charAt(i), data.charAt(i),
-				false, false, false,
-				false
-			);
-			ev.isCompositioned = true;
-			ev.isCompositionedFirst = i == 0;
-			ev.isCompositionedLast = i == goal - 1;
-			dequeue.push(ev);
-		}
-
-		sweep();
+		pushCompositionedString(e, this.prefix + this.composition);
 	};
 	// }}}
 
@@ -209,7 +194,8 @@
 			compositionstart: compositionstart,
 			compositionupdate: compositionupdate,
 			compositionend: compositionend,
-			input: getInputListener()
+			input: getInputListener(),
+			paste: paste
 		};
 	}
 
@@ -308,6 +294,10 @@
 		return true;
 	}
 
+	function isPasteKeyStroke (code, e) {
+		return code == -45 && e.shiftKey && !e.ctrlKey && !e.altKey;
+	}
+
 	function insertCompositionedChar (e) {
 		if (!(e instanceof VirtualInputEvent)) return;
 		if (e.code < 0) return;
@@ -371,6 +361,23 @@
 			compositionResult.run(e);
 			compositionResult = null;
 		}, 1);
+	}
+
+	function pushCompositionedString (e, data) {
+		for (var i = 0, goal = data.length; i < goal; i++) {
+			var ev = new VirtualInputEvent(
+				e,
+				data.charCodeAt(i), data.charAt(i), data.charAt(i),
+				false, false, false,
+				false
+			);
+			ev.isCompositioned = true;
+			ev.isCompositionedFirst = i == 0;
+			ev.isCompositionedLast = i == goal - 1;
+			dequeue.push(ev);
+		}
+
+		sweep();
 	}
 	// }}}
 
@@ -598,6 +605,7 @@
 		}
 
 		if (stroke == undefined) return;
+		//if (isPasteKeyStroke(code, e)) return;
 
 		c.push(stroke);
 
@@ -823,6 +831,12 @@
 		lastReceivedEvent = e.type;
 	}
 
+	function paste (e) {
+		if (!isEditable(e)) return;
+
+		e.preventDefault();
+		pushCompositionedString(e, e.clipboardData.getData('text/plain'));
+	}
 	// }}}
 
 	// {{{1 publics

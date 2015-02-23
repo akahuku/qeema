@@ -605,7 +605,7 @@
 		}
 
 		if (stroke == undefined) return;
-		//if (isPasteKeyStroke(code, e)) return;
+		if (isPasteKeyStroke(code, e)) return;
 
 		c.push(stroke);
 

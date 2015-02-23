@@ -137,6 +137,7 @@
 		composition: false,
 		input: false
 	};
+	var handlePasteEvent = true;
 
 	// for general composition
 	var isInComposition = false;
@@ -835,12 +836,25 @@
 		if (!isEditable(e)) return;
 
 		e.preventDefault();
+
+		if (!handlePasteEvent) return;
+
 		pushCompositionedString(e, e.clipboardData.getData('text/plain'));
 	}
 	// }}}
 
 	// {{{1 publics
-	function install () {
+	function install (opts) {
+		opts || (opts = {});
+		[
+			'log', 'logBasic', 'logComposition', 'logInput',
+			'handlePasteEvent'
+		].forEach(function (p) {
+			if (p in opts) {
+				this[p] = opts[p];
+			}
+		});
+
 		functionKeyCodes = getFunctionKeyCodes();
 		if (functionKeyCodes) {
 			ctrlMap = getCtrlMap();
@@ -1282,6 +1296,11 @@
 		logInput: {
 			get: function () {return logs.input},
 			set: function (v) {logs.input = !!v}
+		},
+
+		handlePasteEvent: {
+			get: function () {return handlePasteEvent},
+			set: function (v) {handlePasteEvent = !!v}
 		}
 	});
 })(this);

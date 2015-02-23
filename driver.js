@@ -126,11 +126,16 @@ document.addEventListener('DOMContentLoaded', function () {
 		qeema.log = qeema.logInput = e.target.checked;
 	}, false);
 
+	$('p7').addEventListener('click', function (e) {
+		qeema.handlePasteEvent = e.target.checked;
+	}, false);
+
 	$('t1').value = '';
 	$('t2').value = '';
 	qeema.log = qeema.logBasic = $('p4').checked;
 	qeema.log = qeema.logComposition = $('p5').checked;
 	qeema.log = qeema.logInput = $('p6').checked;
+	qeema.handlePasteEvent = $('p7').checked;
 }, false);
 
 // vim:set ts=4 sw=4 fenc=UTF-8 ff=unix ft=javascript fdm=marker :

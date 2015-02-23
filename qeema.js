@@ -853,7 +853,7 @@
 			if (p in opts) {
 				this[p] = opts[p];
 			}
-		});
+		}, this);
 
 		functionKeyCodes = getFunctionKeyCodes();
 		if (functionKeyCodes) {

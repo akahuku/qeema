@@ -65,6 +65,7 @@
 		9: 9,
 		13: 13,
 		27: 27,
+		32: 32,
 		46: 127
 	};
 	var PRESTO_CODE_TO_CHAR_MAP = WEBKIT_CODE_TO_CHAR_MAP;

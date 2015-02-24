@@ -11,8 +11,9 @@ document.addEventListener('DOMContentLoaded', function () {
 	}
 
 	function getChar (e) {
-		return e.char.replace(/[\u0000-\u001f]/g, function ($0) {
-			return '^' + String.fromCharCode($0.charCodeAt(0) + 64);
+		return e.char.replace(/[\u0000-\u001f\u007f]/g, function ($0) {
+			return '^' +
+				   ($0 == '\u007f' ? '_' : String.fromCharCode($0.charCodeAt(0) + 64));
 		});
 	}
 

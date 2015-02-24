@@ -99,12 +99,12 @@ qeema.addListener('log', function (e) {
 
 # 認識する機能キー名とコード
 
-* backspace (-8)
-* tab (-9)
-* enter (-13)
+* backspace (8)
+* tab (9)
+* enter (13)
 * pause (-19)
-* esc (-27)
-* space (-32)
+* esc (27)
+* space (32)
 * pageup (-33)
 * pagedown (-34)
 * end (-35)
@@ -114,7 +114,7 @@ qeema.addListener('log', function (e) {
 * right (-39)
 * down (-40)
 * insert (-45)
-* delete (-46)
+* delete (127)
 * os (-91)
 * f1 (-112)
 * f2 (-113)

@@ -44,6 +44,8 @@
 	};
 	var PRESTO_FUNCTION_KEYCODES = WEBKIT_FUNCTION_KEYCODES;
 	var GECKO_FUNCTION_KEYCODES = WEBKIT_FUNCTION_KEYCODES;
+
+	//
 	var WEBKIT_CTRL_MAP = {
 		32:  0,  65:  1,  66:  2,  67:  3,  68:  4,  69:  5,  70:  6,  71:  7,  72:  8,  73:  9,
 		74: 10,  75: 11,  76: 12,  77: 13,  78: 14,  79: 15,  80: 16,  81: 17,  82: 18,  83: 19,
@@ -57,6 +59,18 @@
 	var PRESTO_CTRL_MAP = WEBKIT_CTRL_MAP;
 	var GECKO_CTRL_MAP = null;
 
+	//
+	var WEBKIT_CODE_TO_CHAR_MAP = {
+		8: 8,
+		9: 9,
+		13: 13,
+		27: 27,
+		46: 127
+	};
+	var PRESTO_CODE_TO_CHAR_MAP = WEBKIT_CODE_TO_CHAR_MAP;
+	var GECKO_CODE_TO_CHAR_MAP = WEBKIT_CODE_TO_CHAR_MAP;
+
+	//
 	var FUNCTION_KEY_ALIASES = {
 		'bs':       'backspace',
 		'nl':       'enter',
@@ -126,6 +140,7 @@
 	);
 	var functionKeyCodes = null;
 	var ctrlMap = null;
+	var codeToCharMap = null;
 	var consumed;
 	var lastReceivedEvent = '';
 	var dequeue = [];
@@ -185,6 +200,12 @@
 		if (global.chrome) return WEBKIT_CTRL_MAP;
 		if (global.opera) return PRESTO_CTRL_MAP;
 		if (global.gecko) return GECKO_CTRL_MAP;
+	}
+
+	function getCodeToCharMap () {
+		if (global.chrome) return WEBKIT_CODE_TO_CHAR_MAP;
+		if (global.opera) return PRESTO_CODE_TO_CHAR_MAP;
+		if (global.gecko) return GECKO_CODE_TO_CHAR_MAP;
 	}
 
 	function getListenersSet () {
@@ -551,18 +572,18 @@
 
 		// special keys which processed by keydown listener (for Webkit, Presto)
 		if (e.keyCode < 0) {
-			code = e.keyCode >= -32 ? -e.keyCode : e.keyCode;
+			code = codeToCharMap[-e.keyCode] || e.keyCode;
 			getModifiers(c, e);
-			char = '';
+			char = code < 0 ? '' : String.fromCharCode(code);
 			stroke = functionKeyCodes[-e.keyCode];
 			isSpecial = true;
 		}
 
 		// special keys (for Gecko)
 		else if (e.charCode == 0) {
-			code = e.keyCode < 32 ? e.keyCode : -e.keyCode;
+			code = codeToCharMap[e.keyCode] || -e.keyCode;
 			getModifiers(c, e);
-			char = '';
+			char = code < 0 ? '' : String.fromCharCode(code);
 			stroke = functionKeyCodes[e.keyCode];
 			isSpecial = true;
 		}
@@ -858,6 +879,7 @@
 		functionKeyCodes = getFunctionKeyCodes();
 		if (functionKeyCodes) {
 			ctrlMap = getCtrlMap();
+			codeToCharMap = getCodeToCharMap();
 
 			var listenersSet = getListenersSet();
 			for (var i in listenersSet) {
@@ -1007,7 +1029,7 @@
 			for (var i in functionKeyCodes) {
 				if (functionKeyCodes[i] == name) {
 					return {
-						code:-i,
+						code:codeToCharMap[i] || -i,
 						name:name,
 						shift:shift,
 						ctrl:ctrl,

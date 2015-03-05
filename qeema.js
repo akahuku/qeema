@@ -107,6 +107,27 @@
 			this.nativeEvent.preventDefault();
 		}
 	};
+	VirtualInputEvent.prototype.code2letter = function (c, useSpecial) {
+		if (typeof c != 'number') {
+			return '';
+		}
+		if (c >= 0) {
+			return String.fromCharCode(c);
+		}
+		if (useSpecial && -c in functionKeyCodes) {
+			return '<' + functionKeyCodes[-c] + '>';
+		}
+		return '';
+	};
+	VirtualInputEvent.prototype.toInternalString = function () {
+		if (typeof this.code != 'number') {
+			return '';
+		}
+		if (this.isSpecial && this.code < 0) {
+			return '\ue000' + '<' + this.key + '>';
+		}
+		return String.fromCharCode(this.code);
+	};
 
 	function CompositionResult (e) {
 		this.prefix = '';
@@ -1274,8 +1295,6 @@
 		addListener: {value:addListener},
 		removeListener: {value:removeListener},
 
-		code2letter: {value:code2letter},
-		toInternalString: {value:toInternalString},
 		objectFromCode: {value:objectFromCode},
 		nopObject: {value:nopObject},
 		insertFnKeyHeader: {value:insertFnKeyHeader},

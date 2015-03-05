@@ -120,13 +120,14 @@
 		return '';
 	};
 	VirtualInputEvent.prototype.toInternalString = function () {
-		if (typeof this.code != 'number') {
+		var c = this.code;
+		if (typeof c != 'number') {
 			return '';
 		}
-		if (this.isSpecial && this.code < 0) {
+		if (this.isSpecial && c < 0) {
 			return '\ue000' + '<' + this.key + '>';
 		}
-		return String.fromCharCode(this.code);
+		return String.fromCharCode(c);
 	};
 
 	function CompositionResult (e) {
@@ -1109,6 +1110,10 @@
 		};
 	}
 
+	function isInputEvent (e) {
+		return e instanceof VirtualInputEvent;
+	}
+
 	// dequeue manipulators
 	function createSequences (s, asComposition) {
 		var result = [];
@@ -1299,6 +1304,7 @@
 		nopObject: {value:nopObject},
 		insertFnKeyHeader: {value:insertFnKeyHeader},
 		parseKeyDesc: {value:parseKeyDesc},
+		isInputEvent: {value:isInputEvent},
 
 		createSequences: {value:createSequences},
 		setDequeue: {value:setDequeue},

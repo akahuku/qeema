@@ -29,12 +29,23 @@ div.a {
     font-size:large;
     box-sizing:border-box;
 }
+#c1 {
+	width:100%;
+	min-height:1em;
+	padding:2px;
+    font-family:monospace;
+    font-size:medium;
+	border:1px solid silver;
+}
 	</style>
     </head>
     <body>
 	<h1>qeema: Integrated keyboard manager test</h1>
 	<div class="a">
 	    <input id="t2" placeholder="focus and input any string..."></input>
+	</div>
+	<div class="a">
+	    <div id="c1" contenteditable="true">foo <b>bar</b> <i>baz</i> <a href="http://example.org">http://example.org</a> bax</div>
 	</div>
 	<div class="a">
 	    <textarea id="t1" readonly="readonly"></textarea>

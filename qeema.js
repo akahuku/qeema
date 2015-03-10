@@ -193,7 +193,7 @@
 	// }}}
 
 	// {{{1 utils for content editable elements
-	var editable = {
+	var editable = Object.freeze({
 		isSimpleEdit: function (el) {
 			return 'selectionStart' in el
 				&& 'selectionEnd' in el
@@ -367,7 +367,7 @@
 				return r;
 			}
 		}
-	};
+	});
 	// }}}
 
 	// {{{1 privates
@@ -1494,6 +1494,8 @@
 		insertFnKeyHeader: {value:insertFnKeyHeader},
 		parseKeyDesc: {value:parseKeyDesc},
 		isInputEvent: {value:isInputEvent},
+
+		editable: {value:editable},
 
 		createSequences: {value:createSequences},
 		setDequeue: {value:setDequeue},

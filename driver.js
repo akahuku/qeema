@@ -131,6 +131,13 @@ document.addEventListener('DOMContentLoaded', function () {
 		qeema.handlePasteEvent = e.target.checked;
 	}, false);
 
+	$('b1').addEventListener('click', function (e) {
+		var t = $('c1');
+		t.focus();
+		qeema.editable.setSelectionRange(t, 1);
+	}, false);
+
+	//
 	$('t1').value = '';
 	$('t2').value = '';
 	qeema.log = qeema.logBasic = $('p4').checked;

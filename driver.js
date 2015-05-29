@@ -1,13 +1,28 @@
 document.addEventListener('DOMContentLoaded', function () {
+	var rulerTimer;
+
 	function $ (id) {
 		return document.getElementById(id);
 	}
 
-	function log (str) {
+	function dolog (str) {
 		var t1 = $('t1');
 		var pad = t1.value == '' ? '' : '\n';
 		t1.value += pad + str;
 		t1.scrollTop = Math.max(0, t1.scrollHeight - t1.clientHeight);
+	}
+
+	function log (str) {
+		dolog(str);
+
+		if (rulerTimer) {
+			clearTimeout(rulerTimer);
+		}
+
+		rulerTimer = setTimeout(function () {
+			dolog('----------');
+			rulerTimer = null;
+		}, 1000);
 	}
 
 	function getChar (e) {

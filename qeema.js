@@ -670,6 +670,10 @@
 		consumed = false;
 		var etype = '[ keydown]';
 
+		if (window.chrome) {
+			lastValue = editable.value(e.target);
+		}
+
 		if (window.opera && e.keyCode == 229) {
 			var value;
 			if (!isInComposition) {
@@ -1026,6 +1030,7 @@
 
 	function inputWebkit (e) {
 		var etype = '[   input]';
+		var current = editable.value(e.target);
 
 		enableLog && logs.input && logit(
 			etype, ' value:"', editable.value(e.target), '"'
@@ -1033,7 +1038,6 @@
 
 		switch (lastReceivedEvent) {
 		case 'keydown':
-			var current = editable.value(e.target);
 			var pos = getIncreasePosition(lastValue, current);
 			if (pos >= 0) {
 				var s = current.substr(pos, current.length - lastValue.length);
@@ -1056,7 +1060,6 @@
 			break;
 		}
 
-		lastValue = editable.value(e.target);
 		lastReceivedEvent = e.type;
 	}
 
@@ -1273,7 +1276,6 @@
 					};
 				}
 			}
-
 
 			if (/^[@a-z\[\\\]_]$/.test(name) && ctrl && !shift && !alt) {
 				return {

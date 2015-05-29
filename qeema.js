@@ -1274,6 +1274,17 @@
 				}
 			}
 
+
+			if (/^[@a-z\[\\\]_]$/.test(name) && ctrl && !shift && !alt) {
+				return {
+					code:name.charCodeAt(0) & 0x1f,
+					name:name,
+					shift:shift,
+					ctrl:ctrl,
+					alt:alt
+				};
+			}
+
 			return null;
 		}
 		if (typeof desc == 'number') {

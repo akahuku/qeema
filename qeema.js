@@ -390,7 +390,6 @@
 	}
 
 	function getKeyupListener () {
-		if (global.opera) return keyupPresto;
 	}
 
 	function getInputListener () {
@@ -674,34 +673,6 @@
 			lastValue = editable.value(e.target);
 		}
 
-		if (window.opera && e.keyCode == 229) {
-			var value;
-			if (!isInComposition) {
-				var ss = editable.selectionStart(e.target);
-				if (!e.repeat && ss > 0) {
-					value = editable.value(e.target);
-					value = value.substring(0, ss - 1) +
-							value.substring(ss);
-				}
-				else {
-					value = '';
-				}
-				cop2.before = value;
-			}
-
-			cop2.preEvents.push({
-				repeat: e.repeat,
-				inputEventCount: 0
-			});
-
-			enableLog && logs.composition && logit(
-				' *** preEvents pushed at keydown event ***',
-				value == undefined ? '' : (', original string initialized: "' + value + '"')
-			);
-
-			return;
-		}
-
 		enableLog && logs.basic && logit(
 			etype,
 			' keyCode:', e.keyCode,
@@ -886,147 +857,6 @@
 			', ctrl:', e.ctrlKey,
 			', alt:', e.altKey
 		);
-	}
-
-	function keyupPresto (e) {
-		// {{{2
-		if (e.shiftKey && e.keyCode == 16
-		||  e.ctrlKey && e.keyCode == 17
-		||  e.altKey && e.keyCode == 18) {
-			return;
-		}
-
-		var etype = '[   keyup]';
-
-		if (cop2.preEvents.length && editable.isSimpleEdit(e.target)) {
-			var current = editable.value(e.target);
-			var item = cop2.preEvents.shift();
-			var incPos = getIncreasePosition(cop2.before, current);
-			var composition = current.substr(
-				incPos, current.length - cop2.before.length);
-
-			while (cop2.preEvents.length && cop2.preEvents[0].repeat) {
-				cop2.preEvents.shift();
-			}
-
-			enableLog && logs.composition && logit([
-				etype,
-				'          keyCode: ' + e.keyCode,
-				'           before: "' + cop2.before + '"',
-				'          current: "' + current + '"',
-				'      composition: "' + composition + '"',
-				'  inputEventCount: ' + item.inputEventCount,
-				'           incPos: ' + incPos
-			].join('\n'));
-
-			if (isInComposition) {
-				/*
-				 * 1. implicit fix:
-				 * [keydown]	keyCode: 229, which: 229
-				 * [input]		value:"...X" (X is the character which raised fixation)
-				 * [input]		value:"...X" (X is the character which raised fixation)
-				 * [input]		value:"...X" (X is the character which raised fixation)
-				 * [keyup]		keyCode: Y, which: Y
-				 *
-				 * 2. explicit fix:
-				 * [keydown]	keyCode: 229, which: 229
-				 * [input]		value:"..."
-				 * [input]		value:"..."
-				 * [keyup]		keyCode: 13, which: 13
-				 *
-				 * 3. selecting a candidate
-				 * [keydown]	keyCode: 229, which: 229
-				 * [input]		value:"..."
-				 * [keyup]		keyCode: Y, which: Y
-				 *
-				 * 4. escaping a composition
-				 * [keydown]	keyCode: 229, which: 229
-				 * [keyup]		keyCode: 27, which: 27
-				 *
-				 */
-
-				// implicit fix
-				if (item.inputEventCount == 3) {
-					// close current composition session
-					e.data = composition.substr(0, composition.length - 1);
-					compositionend(e);
-
-					// open new composition session
-					cop2.before = cop2.before.substring(0, incPos) +
-								  composition.substr(0, composition.length - 1) +
-								  cop2.before.substring(incPos + composition.length);
-
-					e.data = '';
-					compositionstart(e);
-					compositionResult.prefix = '';
-
-					e.data = composition.substr(-1);
-					compositionupdate(e);
-				}
-
-				// explicit fix
-				// canceling
-				// composition extinction
-				else if (item.inputEventCount == 2
-				|| e.keyCode == 13
-				|| e.keyCode == 27
-				|| cop2.before == current) {
-					e.data = composition;
-					compositionend(e);
-
-					var incPos2 = getIncreasePosition(
-						compositionResult.before, current);
-					if (incPos2 >= 0) {
-						compositionResult.composition = current.substr(
-							incPos2,
-							current.length - compositionResult.before.length);
-						registerCompositionFinish(e);
-					}
-				}
-
-				// composition update
-				else {
-					e.data = composition;
-					compositionupdate(e);
-				}
-			}
-			
-			// new composition session
-			else {
-				compositionResult = null;
-				e.data = '';
-				compositionstart(e);
-				compositionResult.before = cop2.before;
-				compositionResult.position--;
-
-				e.data = composition;
-				compositionupdate(e);
-			}
-		}
-
-		else if (cop2.preEvents.length && editable.isComplexEdit(e.target)) {
-			if (e.keyCode == 13) {
-				cop2.preEvents.length = 0;
-				dequeue.push(new VirtualInputEvent(
-					null,
-					-8192, PRESTO_FUNCTION_KEYCODES['8192'], PRESTO_FUNCTION_KEYCODES['8192'],
-					false, false, false,
-					true
-				));
-				sweep();
-			}
-		}
-
-		enableLog && logs.basic && logit(
-			etype,
-			' keyCode:', e.keyCode,
-			', which:', e.which,
-			', charCode:', e.charCode,
-			', shift:', e.shiftKey,
-			', ctrl:', e.ctrlKey,
-			', alt:', e.altKey
-		);
-		// }}}
 	}
 
 	function inputWebkit (e) {

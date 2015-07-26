@@ -24,7 +24,7 @@
 (function (global) {
 	'use strict';
 
-	// {{{1 consts
+	// <<<1 consts
 	var WEBKIT_FUNCTION_KEYCODES = {
 		8: 'backspace',
 		9: 'tab',
@@ -88,9 +88,9 @@
 		'bslash':   '\\'.charCodeAt(0)
 	};
 	var PRIOR_KEYS_MANIFEST = 'data-prior-keys';
-	// }}}
+	// >>>
 
-	// {{{1 classes
+	// <<<1 classes
 	function VirtualInputEvent (nativeEvent, code, char, key, shift, ctrl, alt, isSpecial) {
 		this.nativeEvent = nativeEvent;
 		this.code = code;
@@ -147,9 +147,9 @@
 		editable.setSelectionRange(t, this.position);
 		pushCompositionedString(e, this.prefix + this.composition);
 	};
-	// }}}
+	// >>>
 
-	// {{{1 variables
+	// <<<1 variables
 	var listeners = {
 		input: [],
 		compositionstart: [],
@@ -192,9 +192,9 @@
 		before: '',
 		preEvents: []
 	};
-	// }}}
+	// >>>
 
-	// {{{1 utils for content editable elements
+	// <<<1 utils for content editable elements
 	var editable = Object.freeze({
 		isSimpleEdit: function (el) {
 			return 'selectionStart' in el
@@ -370,9 +370,9 @@
 			}
 		}
 	});
-	// }}}
+	// >>>
 
-	// {{{1 privates
+	// <<<1 privates
 	function logit () {
 		fire('log',
 			{message: Array.prototype.slice.call(arguments).join('')}
@@ -611,9 +611,9 @@
 
 		sweep();
 	}
-	// }}}
+	// >>>
 
-	// {{{1 internal listeners
+	// <<<1 internal listeners
 	function compositionstart (e) {
 		enableLog && logs.composition && logit(
 			'[compositionstart] "', e.data, '"'
@@ -932,9 +932,9 @@
 
 		pushCompositionedString(e, e.clipboardData.getData('text/plain'));
 	}
-	// }}}
+	// >>>
 
-	// {{{1 publics
+	// <<<1 publics
 	function install (opts) {
 		opts || (opts = {});
 		[
@@ -1340,7 +1340,7 @@
 		}
 		uninstall();
 	}
-	// }}}
+	// >>>
 
 	// boot
 	(function () {
@@ -1412,4 +1412,4 @@
 	});
 })(this);
 
-// vim:set ts=4 sw=4 fenc=UTF-8 ff=unix ft=javascript fdm=marker :
+// vim:set ts=4 sw=4 fenc=UTF-8 ff=unix ft=javascript fdm=marker fmr=<<<,>>> :

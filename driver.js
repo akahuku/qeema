@@ -25,8 +25,8 @@ document.addEventListener('DOMContentLoaded', function () {
 		}, 1000);
 	}
 
-	function getChar (char) {
-		return char.replace(/[\u0000-\u001f\u007f]/g, function ($0) {
+	function escape (s) {
+		return ('' + s).replace(/[\u0000-\u001f\u007f]/g, function ($0) {
 			return '^' +
 				   ($0 == '\u007f' ? '_' : String.fromCharCode($0.charCodeAt(0) + 64));
 		});
@@ -89,15 +89,46 @@ document.addEventListener('DOMContentLoaded', function () {
 		log('paste event fired');
 	}
 
-	function getkey2 (e) {
-		if (e.isSpecial && (e.alt || e.ctrl || e.shift)) {
-			return '<' + e.key + '>';
+	// test
+	function test () {
+		try {
+			var vie = qeema.VirtualInputEvent;
+			[
+				[32, new vie(null, 32, ' ', ' ', false, false, false, false)],
+				['a', new vie(null, 97, 'a', 'a', false, false, false, false)],
+				['\ue000#1', new vie(null, -112, '', '<f1>', false, false, false, true)],
+				['\ue000<C-a>', new vie(null, 1, '\u0001', '\u0001', false, true, false, false)],
+				['\ue000<esc>', new vie(null, 27, '\u001b', '\u001b', false, false, false, true)],
+				['\ue000<S-esc>', new vie(null, 27, '\u001b', '<S-esc>', true, false, false, true)],
+				['\ue000<delete>', new vie(null, 127, '\u007f', '<delete>', false, false, false, true)],
+				['\ue000<A-PageDown>', new vie(null, -1, '', '<A-pagedown>', false, false, true, true)],
+				['\ue000<A-GT>', new vie(null, -1, '', '<A-GT>', false, false, true, false)],
+				['\ue000<A-LT>', new vie(null, -1, '', '<A-LT>', false, false, true, false)],
+				['\ue000<bar>', new vie(null, '|'.charCodeAt(0), '|', '<bar>', false, false, false, false)]
+			].forEach(function (t) {
+				try {
+					var a = qeema.parseKeyDesc(t[0]);
+					for (var i in a.prop) {
+						if (a.prop[i] != t[1][i]) {
+							throw new Error(
+								'property "' + i + '":' +
+								' expected: ' + escape(t[1][i]) +
+								', actual: ' + escape(a.prop[i]));
+						}
+					}
+				}
+				catch (e) {
+					console.log('*** ' + t[0] + ': exceptioned ***');
+					throw e;
+				}
+			});
 		}
-		if (e.alt) {
-			return '<' + e.key + '>';
+		catch (e) {
+			console.log('exception: ' + e.message);
 		}
-		return e.code2letter(e.code, true);
 	}
+
+	// boot
 
 	[document].forEach(function (target) {
 		target.addEventListener('keydown', keydown, false);
@@ -111,9 +142,8 @@ document.addEventListener('DOMContentLoaded', function () {
 		.addListener(function (e) {
 			log(
 				'[code: ' + rset(e.code, 4) + ']' +
-				' [char: ' + lset(getChar(e.char), 16) + ']' +
-				' [key: ' + lset(e.key, 16) + ']' +
-				' [key2: ' + lset(getChar(getkey2(e)), 16) + ']' +
+				' [char: ' + lset(escape(e.char), 16) + ']' +
+				' [key: ' + lset(escape(e.key), 16) + ']' +
 				' [modifier: ' + getModifiers(e) + ']' +
 				' [isSpecial: ' + lset(e.isSpecial, 5) + ']' +
 				' [composition: ' + getComposition(e) + ']'
@@ -170,6 +200,10 @@ document.addEventListener('DOMContentLoaded', function () {
 	qeema.log = qeema.logComposition = $('p5').checked;
 	qeema.log = qeema.logInput = $('p6').checked;
 	qeema.handlePasteEvent = $('p7').checked;
+
+	// do test
+	test();
+
 }, false);
 
 // vim:set ts=4 sw=4 fenc=UTF-8 ff=unix ft=javascript fdm=marker :

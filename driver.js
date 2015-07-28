@@ -25,8 +25,8 @@ document.addEventListener('DOMContentLoaded', function () {
 		}, 1000);
 	}
 
-	function getChar (e) {
-		return e.char.replace(/[\u0000-\u001f\u007f]/g, function ($0) {
+	function getChar (char) {
+		return char.replace(/[\u0000-\u001f\u007f]/g, function ($0) {
 			return '^' +
 				   ($0 == '\u007f' ? '_' : String.fromCharCode($0.charCodeAt(0) + 64));
 		});
@@ -89,6 +89,16 @@ document.addEventListener('DOMContentLoaded', function () {
 		log('paste event fired');
 	}
 
+	function getkey2 (e) {
+		if (e.isSpecial && (e.alt || e.ctrl || e.shift)) {
+			return '<' + e.key + '>';
+		}
+		if (e.alt) {
+			return '<' + e.key + '>';
+		}
+		return e.code2letter(e.code, true);
+	}
+
 	[document].forEach(function (target) {
 		target.addEventListener('keydown', keydown, false);
 		target.addEventListener('keypress', keypress, false);
@@ -101,8 +111,9 @@ document.addEventListener('DOMContentLoaded', function () {
 		.addListener(function (e) {
 			log(
 				'[code: ' + rset(e.code, 4) + ']' +
-				' [char: ' + lset(getChar(e), 16) + ']' +
+				' [char: ' + lset(getChar(e.char), 16) + ']' +
 				' [key: ' + lset(e.key, 16) + ']' +
+				' [key2: ' + lset(getChar(getkey2(e)), 16) + ']' +
 				' [modifier: ' + getModifiers(e) + ']' +
 				' [isSpecial: ' + lset(e.isSpecial, 5) + ']' +
 				' [composition: ' + getComposition(e) + ']'

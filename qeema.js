@@ -687,12 +687,19 @@
 		var keyCode = -e.keyCode;
 
 		if (!(e.keyCode in functionKeyCodes)) {
-			if (e.ctrlKey && !e.altKey && ctrlMap && e.keyCode in ctrlMap) {
-				charCode = ctrlMap[e.keyCode];
-				keyCode = 0;
-				enableLog && logs.basic && logit(
-					etype, ' found ctrl-shortcut'
-				);
+			if (ctrlMap && e.keyCode in ctrlMap) {
+				if (e.ctrlKey && !e.altKey) {
+					charCode = ctrlMap[e.keyCode];
+					keyCode = 0;
+					enableLog && logs.basic && logit(etype, ' found ctrl-shortcut');
+				}
+				else if (e.altKey) {
+					charCode = keyCode = -keyCode;
+					enableLog && logs.basic && logit(etype, ' found alt + alphabet key');
+				}
+				else {
+					return;
+				}
 			}
 			else {
 				return;
@@ -814,6 +821,12 @@
 				else {
 					return;
 				}
+			}
+			// with alt
+			else if (altKey) {
+				char = String.fromCharCode(code).toLowerCase();
+				stroke = String.fromCharCode(code).toLowerCase();
+				getModifiers(c, e);
 			}
 			// printable chars
 			else if (code >= 32) {

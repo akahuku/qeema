@@ -115,19 +115,14 @@
 			return String.fromCharCode(c);
 		}
 		if (useSpecial && -c in functionKeyCodes) {
-			return '<' + functionKeyCodes[-c] + '>';
+			return this.key;
 		}
 		return '';
 	};
 	VirtualInputEvent.prototype.toInternalString = function () {
-		var c = this.code;
-		if (typeof c != 'number') {
-			return '';
-		}
-		if (this.isSpecial && c < 0) {
-			return '\ue000' + '<' + this.key + '>';
-		}
-		return String.fromCharCode(c);
+		return /^<.+>$/.test(this.key) ?
+			'\ue000' + this.key :
+			this.char;
 	};
 
 	function CompositionResult (e) {
@@ -1048,29 +1043,6 @@
 	}
 
 	// code utils
-	function code2letter (c, useSpecial) {
-		if (typeof c != 'number') {
-			return '';
-		}
-		if (c >= 0) {
-			return String.fromCharCode(c);
-		}
-		if (useSpecial && -c in functionKeyCodes) {
-			return '<' + functionKeyCodes[-c] + '>';
-		}
-		return '';
-	}
-
-	function toInternalString (e) {
-		if (typeof e.code != 'number') {
-			return '';
-		}
-		if (e.isSpecial && e.code < 0) {
-			return '\ue000' + '<' + e.key + '>';
-		}
-		return String.fromCharCode(e.code);
-	}
-
 	function objectFromCode (c) {
 		if (typeof c != 'number') {
 			return null;

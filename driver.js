@@ -90,24 +90,27 @@ document.addEventListener('DOMContentLoaded', function () {
 	}
 
 	// test
-	function test () {
+	function testParseKeyDesc () {
+		var last;
+		var vie = qeema.VirtualInputEvent;
 		try {
-			var vie = qeema.VirtualInputEvent;
 			[
-				[32, new vie(null, 32, ' ', ' ', false, false, false, false)],
-				['a', new vie(null, 97, 'a', 'a', false, false, false, false)],
-				['\ue000#1', new vie(null, -112, '', '<f1>', false, false, false, true)],
-				['\ue000<C-a>', new vie(null, 1, '\u0001', '\u0001', false, true, false, false)],
-				['\ue000<esc>', new vie(null, 27, '\u001b', '\u001b', false, false, false, true)],
-				['\ue000<S-esc>', new vie(null, 27, '\u001b', '<S-esc>', true, false, false, true)],
-				['\ue000<delete>', new vie(null, 127, '\u007f', '<delete>', false, false, false, true)],
-				['\ue000<A-PageDown>', new vie(null, -1, '', '<A-pagedown>', false, false, true, true)],
-				['\ue000<A-GT>', new vie(null, -1, '', '<A-GT>', false, false, true, false)],
-				['\ue000<A-LT>', new vie(null, -1, '', '<A-LT>', false, false, true, false)],
-				['\ue000<bar>', new vie(null, '|'.charCodeAt(0), '|', '<bar>', false, false, false, false)]
-			].forEach(function (t) {
+				// key desc                          code                           char      key             shift  ctrl   alt    isspecial
+				['a',                  new vie(null, 97,                            'a',      'a',            false, false, false, false)],
+
+				['\ue000<space>',      new vie(null, 32,                            ' ',      ' ',            false, false, false, true)],
+				['\ue000#1',           new vie(null, -112,                          '',       '<f1>',         false, false, false, true)],
+				['\ue000<C-a>',        new vie(null, 1,                             '\u0001', '\u0001',       false, true,  false, false)],
+				['\ue000<esc>',        new vie(null, 27,                            '\u001b', '\u001b',       false, false, false, true)],
+				['\ue000<S-esc>',      new vie(null, -(0x8000 | 27),                '\u001b', '<S-esc>',      true,  false, false, true)],
+				['\ue000<delete>',     new vie(null, 127,                           '\u007f', '\u007f',       false, false, false, true)],
+				['\ue000<A-PageDown>', new vie(null, -(0x2000 | 34),                '',       '<A-pagedown>', false, false, true,  true)],
+				['\ue000<A-GT>',       new vie(null, -(0x2000 | '>'.charCodeAt(0)), '',       '<A-GT>',       false, false, true,  false)],
+				['\ue000<A-LT>',       new vie(null, -(0x2000 | '<'.charCodeAt(0)), '',       '<A-LT>',       false, false, true,  false)],
+				['\ue000<bar>',        new vie(null, '|'.charCodeAt(0),             '|',      '<bar>',        false, false, false, false)]
+			].forEach(function (t, index) {
 				try {
-					var a = qeema.parseKeyDesc(t[0]);
+					var a = qeema.parseKeyDesc(last = t[0]);
 					for (var i in a.prop) {
 						if (a.prop[i] != t[1][i]) {
 							throw new Error(
@@ -118,13 +121,62 @@ document.addEventListener('DOMContentLoaded', function () {
 					}
 				}
 				catch (e) {
-					console.log('*** ' + t[0] + ': exceptioned ***');
+					log('*** parseKeyDesc #' + index + ' "' + t[0] + '" FAILED ***');
 					throw e;
 				}
 			});
+			return true;
 		}
 		catch (e) {
-			console.log('exception: ' + e.message);
+			log('exception: ' + e.message);
+			console.log(last + ': ' + e.message);
+			debugger;
+			last != undefined && qeema.parseKeyDesc(last);
+		}
+	}
+
+	function testObjectFromCode () {
+		var last;
+		var vie = qeema.VirtualInputEvent;
+		try {
+			[
+				// code                              code                           char      key             shift  ctrl   alt    isspecial
+				[97,                   new vie(null, 97,                            'a',      'a',            false, false, false, false)],
+
+				[32,                   new vie(null, 32,                            ' ',      ' ',            false, false, false, true)],
+				[-112,                 new vie(null, -112,                          '',       '<f1>',         false, false, false, true)],
+				[1,                    new vie(null, 1,                             '\u0001', '\u0001',       false, true,  false, false)],
+				[27,                   new vie(null, 27,                            '\u001b', '\u001b',       false, false, false, true)],
+				[-32795,               new vie(null, -(0x8000 | 27),                '\u001b', '<S-esc>',      true,  false, false, true)],
+				[127,                  new vie(null, 127,                           '\u007f', '\u007f',       false, false, false, true)],
+				[-8226,                new vie(null, -(0x2000 | 34),                '',       '<A-pagedown>', false, false, true,  true)],
+				[-8254,                new vie(null, -(0x2000 | '>'.charCodeAt(0)), '',       '<A-GT>',       false, false, true,  false)],
+				[-8252,                new vie(null, -(0x2000 | '<'.charCodeAt(0)), '',       '<A-LT>',       false, false, true,  false)],
+				[124,                  new vie(null, '|'.charCodeAt(0),             '|',      '|',            false, false, false, false)]
+			].forEach(function (t, index) {
+				try {
+					var a = qeema.objectFromCode(last = t[0]);
+					for (var i in a) {
+						if (a[i] != t[1][i]) {
+							throw new Error(
+								'property "' + i + '":' +
+								' expected: ' + escape(t[1][i]) +
+								', actual: ' + escape(a[i]));
+						}
+					}
+				}
+				catch (e) {
+					log('*** objectFromCode #' + index + ' "' + t[0] + '" FAILED ***');
+					throw e;
+				}
+			});
+			return true;
+		}
+		catch (e) {
+			log('exception: ' + e.message);
+			console.log(last + ': ' + e.message);
+			debugger;
+			last != undefined && qeema.objectFromCode(last);
 		}
 	}
 
@@ -141,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		.install()
 		.addListener(function (e) {
 			log(
-				'[code: ' + rset(e.code, 4) + ']' +
+				'[code: ' + rset(e.code, 6) + ']' +
 				' [char: ' + lset(escape(e.char), 16) + ']' +
 				' [key: ' + lset(escape(e.key), 16) + ']' +
 				' [modifier: ' + getModifiers(e) + ']' +
@@ -202,7 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	qeema.handlePasteEvent = $('p7').checked;
 
 	// do test
-	test();
+	testParseKeyDesc() && testObjectFromCode();
 
 }, false);
 

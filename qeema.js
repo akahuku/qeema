@@ -833,7 +833,8 @@
 
 			// with alt
 			if (altKey) {
-				stroke = String.fromCharCode(code).toLowerCase();
+				stroke = String.fromCharCode(code).toUpperCase();
+				code = stroke.charCodeAt(0);
 				getModifiers(c, e);
 			}
 			// ctrl code shortcut: ^@ - ^_
@@ -1142,7 +1143,7 @@
 		}
 
 		if (alt) {
-			result.code = -name.charCodeAt(0);
+			result.code = -name.toUpperCase().charCodeAt(0);
 			result.name = toOuterBase(result.name);
 			result.special = false;
 			return result;

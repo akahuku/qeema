@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function () {
 				['\ue000<S-esc>',      new vie(null, -(0x8000 | 27),                '\u001b', '<S-esc>',      true,  false, false, true)],
 				['\ue000<delete>',     new vie(null, 127,                           '\u007f', '\u007f',       false, false, false, true)],
 				['\ue000<A-PageDown>', new vie(null, -(0x2000 | 34),                '',       '<A-pagedown>', false, false, true,  true)],
+				['\ue000<A-s>',        new vie(null, -(0x2000 | 'S'.charCodeAt(0)), '',       '<A-s>',        false, false, true,  false)],
 				['\ue000<A-GT>',       new vie(null, -(0x2000 | '>'.charCodeAt(0)), '',       '<A-GT>',       false, false, true,  false)],
 				['\ue000<A-LT>',       new vie(null, -(0x2000 | '<'.charCodeAt(0)), '',       '<A-LT>',       false, false, true,  false)],
 				['\ue000<bar>',        new vie(null, '|'.charCodeAt(0),             '|',      '<bar>',        false, false, false, false)]
@@ -150,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
 				[-32795,               new vie(null, -(0x8000 | 27),                '\u001b', '<S-esc>',      true,  false, false, true)],
 				[127,                  new vie(null, 127,                           '\u007f', '\u007f',       false, false, false, true)],
 				[-8226,                new vie(null, -(0x2000 | 34),                '',       '<A-pagedown>', false, false, true,  true)],
+				[-8275,                new vie(null, -(0x2000 | 'S'.charCodeAt(0)), '',       '<A-s>',        false, false, true,  false)],
 				[-8254,                new vie(null, -(0x2000 | '>'.charCodeAt(0)), '',       '<A-GT>',       false, false, true,  false)],
 				[-8252,                new vie(null, -(0x2000 | '<'.charCodeAt(0)), '',       '<A-LT>',       false, false, true,  false)],
 				[124,                  new vie(null, '|'.charCodeAt(0),             '|',      '|',            false, false, false, false)]

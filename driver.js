@@ -225,6 +225,33 @@ document.addEventListener('DOMContentLoaded', function () {
 			log('internal log: ' + e.message);
 		});
 
+	//
+	
+	document.body.addEventListener('click', function (e) {
+		var elm = e.target;
+		if (elm.nodeName.toLowerCase() != 'input') return;
+		if (!/^p\d+/.test(elm.id)) return;
+		localStorage.setItem(elm.id, elm.checked ? '1' : '0');
+		log(e.target.parentNode.textContent.replace(/^\s+|\s+$/g, '') + ': ' + elm.checked);
+	}, false);
+
+	(function () {
+		for (var i = 1; i <= 7; i++) {
+			var id = 'p' + i;
+			var elm = $(id);
+			if (!elm) continue;
+			var value = localStorage.getItem(id);
+			if (typeof value == 'string') {
+				elm.checked = value == '1';
+			}
+			else {
+				localStorage.setItem(id, elm.checked ? '1' : '0');
+			}
+		}
+	})();
+
+	//
+	
 	$('p4').addEventListener('click', function (e) {
 		qeema.log = qeema.logBasic = e.target.checked;
 	}, false);

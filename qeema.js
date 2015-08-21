@@ -1346,6 +1346,50 @@
 		}
 	}
 
+	function getDocument () {
+		var result = [];
+
+		result.push(
+			'Key stroke descriptor',
+			'=====================',
+			'',
+			'## Syntax',
+			'',
+			'`<` **modifier***  **name** `>`',
+			'',
+			'## Modifier',
+			'',
+			'one of `S-` | `C-` | `A-`'
+		);
+
+		result.push(
+			'',
+			'## Name',
+			'',
+			'one of',
+			''
+		);
+		for (var i in functionKeyNames) {
+			var tmp = ['* `' + i + '`'];
+			for (var j in FUNCTION_KEY_ALIASES) {
+				var f = FUNCTION_KEY_ALIASES[j];
+				if (f === i) {
+					tmp.push('`' + j + '`');
+				}
+			}
+			result.push(tmp.join(' '));
+		}
+
+		for (var i in FUNCTION_KEY_ALIASES) {
+			var f = FUNCTION_KEY_ALIASES[i];
+			if (typeof f == 'number') {
+				result.push('* `' + i + '` (alias of `' + String.fromCharCode(f) + '`)');
+			}
+		}
+
+		return result.join('\n');
+	}
+
 	// shortcut manifest
 	function clearManifest () {
 		document.documentElement.removeAttribute(PRIOR_KEYS_MANIFEST);
@@ -1436,6 +1480,7 @@
 		sweep: {value:sweep},
 		lock: {value:lock},
 		unlock: {value:unlock},
+		getDocument: {value:getDocument},
 		dispose: {value:dispose},
 
 		clearManifest: {value:clearManifest},

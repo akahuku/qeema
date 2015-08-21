@@ -1,11 +1,11 @@
 <!doctype html>
 <html>
-    <head>
-	<meta charset="UTF-8">
-	<title>qeema: Integrated keyboard manager test</title>
-	<script type="text/javascript" src="qeema.js"></script>
-	<script type="text/javascript" src="driver.js"></script>
-	<style type="text/css">
+	<head>
+		<meta charset="UTF-8">
+		<title>qeema: Integrated keyboard manager test</title>
+		<script type="text/javascript" src="qeema.js"></script>
+		<script type="text/javascript" src="driver.js"></script>
+		<style type="text/css">
 h1 {
     margin:0;
     padding:8px;
@@ -17,7 +17,7 @@ div.a {
 }
 #t1 {
     width:100%;
-    height:500px;
+    height:400px;
     font-family:monospace;
     font-size:medium;
     background-color:#ccc;
@@ -38,34 +38,38 @@ div.a {
 	border:1px solid silver;
 }
 	</style>
-    </head>
-    <body>
-	<h1>qeema: Integrated keyboard manager test</h1>
-	<div class="a">
-	    <input id="t2" placeholder="focus and input any string..."></input>
-	</div>
-	<div class="a">
-	    <div id="c1" contenteditable="true">foo <b>bar</b> <i>baz</i> <a href="http://example.org">http://example.org</a> bax</div>
-	</div>
-	<div class="a">
-	    <textarea id="t1" readonly="readonly"></textarea>
-	</div>
-	<div>
-	    <div class="a">
-		<label><input type="checkbox" id="p1"> PreventDefault()</label>
-		<label><input type="checkbox" id="p2"> Log basic (keydown/keypress/keyup) events</label>
-		<label><input type="checkbox" id="p7"> Convert paste event to integerated event</label>
-	    </div>
-	    <fieldset>
-		<legend>Log integrated events</legend>
-		<label><input type="checkbox" id="p3"> Composition events</label>
-	    </fieldset>
-	    <fieldset>
-		<legend>Log internal events</legend>
-		<label><input type="checkbox" id="p4"> Basic (keydown/keypress/keyup) events</label>
-		<label><input type="checkbox" id="p5"> Composition events</label>
-		<label><input type="checkbox" id="p6"> Input events</label>
-	    </fieldset>
-	</div>
-    </body>
+	</head>
+	<body>
+		<h1>qeema: Integrated keyboard manager )</h1>
+		<div class="a">
+			<input id="t2" type="text" placeholder="this is plain textarea. focus and input any text!"></input>
+		</div>
+		<div class="a">
+			<div id="c1" contenteditable="true">this <b>is</b> <i>rich</i> textarea. <a href="http://example.org">http://example.org</a>. focus and input any text!</div>
+		</div>
+		<div class="a">
+			<textarea id="t1" readonly="readonly"></textarea>
+		</div>
+		<div>
+			<div class="a">
+				<label><input type="checkbox" id="p1"> Prevent default action</label>
+				<label><input type="checkbox" id="p2"> Log basic (keydown/keypress/keyup) events of this page</label>
+				<label><input type="checkbox" id="p7"> Convert paste event to integerated event</label>
+			</div>
+			<fieldset>
+				<legend>Log integrated events</legend>
+				<label><input type="checkbox" id="p3"> Composition events</label>
+			</fieldset>
+			<fieldset>
+				<legend>Log internal events of qeema</legend>
+				<label><input type="checkbox" id="p4"> Basic (keydown/keypress/keyup) events</label>
+				<label><input type="checkbox" id="p5"> Composition events</label>
+				<label><input type="checkbox" id="p6"> Input events</label>
+			</fieldset>
+			<fieldset>
+				<legend>for Content Editable Elements</legend>
+				<button id="b1">Focus</button>
+			</fieldset>
+		</div>
+	</body>
 </html>

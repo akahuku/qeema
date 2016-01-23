@@ -708,7 +708,7 @@
 					keyCode = 0;
 					enableLog && logs.basic && logit(etype, ' found ctrl-shortcut');
 				}
-				else if (e.altKey) {
+				else if (!e.ctrlKey && e.altKey) {
 					charCode = keyCode = -keyCode;
 					enableLog && logs.basic && logit(etype, ' found alt + alphabet key');
 				}
@@ -832,7 +832,7 @@
 			}
 
 			// with alt
-			if (altKey) {
+			if (!ctrlKey && altKey) {
 				stroke = String.fromCharCode(code).toUpperCase();
 				code = stroke.charCodeAt(0);
 				if (!(code >= 65 && code <= 90)) {

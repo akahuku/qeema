@@ -897,6 +897,8 @@
 	}
 
 	function inputWebkit (e) {
+		if (!isEditable(e.target) return;
+
 		var etype = '[   input]';
 		var current = editable.value(e.target);
 

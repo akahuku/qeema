@@ -34,10 +34,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	function getModifiers (e) {
 		result = [];
-		if (e.shift) result.push('S');
-		if (e.ctrl) result.push('C');
-		if (e.alt) result.push('A');
+		if ('getModifierState' in e) {
+			e.getModifierState('Shift') && result.push('S');
+			e.getModifierState('Ctrl')  && result.push('C');
+			e.getModifierState('Alt')   && result.push('A');
+		}
+		else {
+			e.shiftKey && result.push('S');
+			e.ctrlKey  && result.push('C');
+			e.altKey   && result.push('A');
+		}
 		return (result.join('') + '---').substr(0, 3);
+	}
+
+	function isShift (e) {
+		var result = e.shiftKey;
+		if ('getModifierState' in e) {
+			return result || e.getModifierState('Shift');
+		}
+		else {
+			return result;
+		}
+	}
+
+	function isCtrl (e) {
+		var result = e.ctrlKey;
+		if ('getModifierState' in e) {
+			return result || e.getModifierState('Control');
+		}
+		else {
+			return result;
+		}
+	}
+
+	function isAlt (e) {
+		var result = e.altKey;
+		if ('getModifierState' in e) {
+			return result || e.getModifierState('Alt');
+		}
+		else {
+			return result;
+		}
 	}
 
 	function getComposition (e) {
@@ -66,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	}
 
 	function keydown (e) {
-		if (e.shiftKey && e.keyCode == 16 || e.ctrlKey && e.keyCode == 17 || e.altKey && e.keyCode == 18) return;
+		if (e.keyCode == 16 || e.keyCode == 17 || e.keyCode == 18) return;
 		if ($('p2').checked) {
 			log('keydown:  keyCode: ' + rset(e.keyCode, 3) + '    charCode: ' + rset(e.charCode, 3));
 		}
@@ -79,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	}
 
 	function keyup (e) {
-		if (e.shiftKey && e.keyCode == 16 || e.ctrlKey && e.keyCode == 17 || e.altKey && e.keyCode == 18) return;
+		if (e.keyCode == 16 || e.keyCode == 17 || e.keyCode == 18) return;
 		if ($('p2').checked) {
 			log('keyup:    keyCode: ' + rset(e.keyCode, 3) + '    charCode: ' + rset(e.charCode, 3));
 		}

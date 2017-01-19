@@ -595,18 +595,6 @@
 		}
 	}
 
-	function registerCompositionFinish (e) {
-		compositionFinishTimer = setTimeout(function () {
-			enableLog && logs.composition && logit(
-				'[compositionResult invoker]'
-			);
-
-			compositionFinishTimer = null;
-			compositionResult.run(e);
-			compositionResult = null;
-		}, 1);
-	}
-
 	function pushCompositionedString (e, data) {
 		for (var i = 0, goal = data.length; i < goal; i++) {
 			var ev = new VirtualInputEvent(
@@ -682,6 +670,8 @@
 		fireCompositionEnd(e.data);
 		if (compositionResult) {
 			compositionResult.composition = e.data;
+			compositionResult.run(e);
+			compositionResult = null;
 		}
 		isInComposition = false;
 	}
@@ -906,7 +896,7 @@
 	}
 
 	function inputWebkit (e) {
-		if (!isEditable(e.target)) return;
+		if (!isEditable(e)) return;
 
 		var etype = '[   input]';
 		var current = editable.value(e.target);
@@ -914,30 +904,6 @@
 		enableLog && logs.input && logit(
 			etype, ' value:"', editable.value(e.target), '"'
 		);
-
-		switch (lastReceivedEvent) {
-		case 'keydown':
-			var pos = getIncreasePosition(lastValue, current);
-			if (pos >= 0) {
-				var s = current.substr(pos, current.length - lastValue.length);
-				if (s != '') {
-					fireCompositionStart('');
-					fireCompositionUpdate(s);
-					fireCompositionEnd(s);
-
-					var cr = new CompositionResult;
-					cr.composition = s;
-					cr.before = lastValue;
-					cr.position = pos;
-					cr.run(e);
-				}
-			}
-			break;
-
-		case 'compositionend':
-			registerCompositionFinish(e);
-			break;
-		}
 
 		lastReceivedEvent = e.type;
 	}
@@ -963,10 +929,6 @@
 		enableLog && logs.input && logit(
 			etype, ' value:"', editable.value(e.target), '"'
 		);
-
-		if (lastReceivedEvent == 'compositionend') {
-			registerCompositionFinish(e);
-		}
 
 		lastReceivedEvent = e.type;
 	}

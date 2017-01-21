@@ -686,7 +686,12 @@
 		var etype = '[ keydown]';
 
 		if (window.chrome) {
-			lastValue = editable.value(e.target);
+			if (e.keyCode == 229) {
+				lastValue = editable.value(e.target);
+			}
+			else {
+				lastValue = null;
+			}
 		}
 
 		enableLog && logs.basic && logit(
@@ -904,6 +909,23 @@
 		enableLog && logs.input && logit(
 			etype, ' value:"', editable.value(e.target), '"'
 		);
+
+		if (lastValue !== null && !isInComposition && lastReceivedEvent == 'keydown') {
+			var current = editable.value(e.target);
+			var pos = getIncreasePosition(lastValue, current);
+			var s = current.substr(pos, current.length - lastValue.length);
+			if (pos >= 0 && s != '') {
+				fireCompositionStart('');
+				fireCompositionUpdate(s);
+				fireCompositionEnd(s);
+
+				var cr = new CompositionResult(e);
+				cr.composition = s;
+				cr.before = lastValue;
+				cr.position = pos;
+				cr.run(e);
+			}
+		}
 
 		lastReceivedEvent = e.type;
 	}
